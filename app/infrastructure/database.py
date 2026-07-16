@@ -1,4 +1,5 @@
-﻿from pathlib import Path
+﻿import os
+from pathlib import Path
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
@@ -13,14 +14,28 @@ DATABASE_DIRECTORY.mkdir(
 )
 
 DATABASE_FILE = DATABASE_DIRECTORY / "avm.db"
-DATABASE_URL = f"sqlite:///{DATABASE_FILE.as_posix()}"
+
+DEFAULT_DATABASE_URL = (
+    f"sqlite:///{DATABASE_FILE.as_posix()}"
+)
+
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    DEFAULT_DATABASE_URL,
+)
+
+connect_args = {}
+
+if DATABASE_URL.startswith("sqlite"):
+    connect_args = {
+        "check_same_thread": False,
+    }
 
 
 engine = create_engine(
     DATABASE_URL,
-    connect_args={
-        "check_same_thread": False,
-    },
+    connect_args=connect_args,
+    pool_pre_ping=True,
 )
 
 
