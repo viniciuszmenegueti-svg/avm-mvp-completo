@@ -1,0 +1,70 @@
+﻿# Ambiente virtual Python
+.venv/
+venv/
+
+# Cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Testes e cobertura
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Variáveis de ambiente e segredos
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Banco de dados local
+*.db
+*.sqlite
+*.sqlite3
+data/database/
+
+# Dados locais e confidenciais
+data/raw/
+data/processed/
+data/uploads/
+storage/
+
+# Documentos potencialmente confidenciais
+*.pdf
+*.doc
+*.docx
+*.xls
+*.xlsx
+
+# Logs
+*.log
+logs/
+
+# Arquivos de editores
+.vscode/
+.idea/
+*.code-workspace
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+
+# Build e distribuição
+build/
+dist/
+*.egg-info/
+
+# Arquivos temporários
+*.tmp
+*.temp
+~$*
