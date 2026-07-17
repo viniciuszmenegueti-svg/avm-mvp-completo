@@ -3,7 +3,7 @@
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from app.domain.order_model import OrderModel
+from app.domain import models  # noqa: F401
 from app.infrastructure.database import Base, DATABASE_URL
 
 
