@@ -36,3 +36,10 @@ class OrderListResponse(BaseModel):
     limit: int = Field(ge=1, le=100)
     offset: int = Field(ge=0)
     items: list[OrderResponse]
+
+
+class OrderStatusUpdate(BaseModel):
+    status: OrderStatus = Field(
+        description="Novo status da Ordem de Serviço",
+        examples=["VALIDATING_INPUT"],
+    )
