@@ -118,3 +118,24 @@ def order_model_to_response(
         received_at=database_order.received_at,
         property=PropertyInput(**property_data),
     )
+
+
+def update_order_status(
+    session: Session,
+    internal_order_id: str,
+    new_status: OrderStatus,
+) -> OrderResponse | None:
+    database_order = session.get(
+        OrderModel,
+        internal_order_id,
+    )
+
+    if database_order is None:
+        return None
+
+    database_order.status = new_status.value
+
+    session.commit()
+    session.refresh(database_order)
+
+    return order_model_to_response(database_order)
