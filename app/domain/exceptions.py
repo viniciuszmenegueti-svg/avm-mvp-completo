@@ -26,3 +26,18 @@ class CityDataMismatchError(Exception):
             "O nome da cidade ou a UF não corresponde "
             "ao código IBGE informado."
         )
+
+
+class InvalidOrderStatusTransitionError(Exception):
+    def __init__(
+        self,
+        current_status: str,
+        new_status: str,
+    ) -> None:
+        self.current_status = current_status
+        self.new_status = new_status
+
+        super().__init__(
+            f"A transição de {current_status} "
+            f"para {new_status} não é permitida."
+        )
