@@ -29,3 +29,10 @@ class OrderResponse(BaseModel):
     status: OrderStatus
     received_at: datetime
     property: PropertyInput
+
+
+class OrderListResponse(BaseModel):
+    total: int = Field(ge=0)
+    limit: int = Field(ge=1, le=100)
+    offset: int = Field(ge=0)
+    items: list[OrderResponse]

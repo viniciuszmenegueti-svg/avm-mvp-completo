@@ -1,8 +1,14 @@
 ﻿from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import (
+    APIRouter,
+    HTTPException,
+    Query,
+    status,
+)
 
+from app.domain.exceptions import UnsupportedCityError
 from app.infrastructure.database import SessionLocal
 from app.repositories.orders_sqlite import (
     create_order as create_order_in_database,
@@ -10,11 +16,15 @@ from app.repositories.orders_sqlite import (
 from app.repositories.orders_sqlite import (
     get_order_by_external_id,
     get_order_by_internal_id,
+    list_orders as list_orders_from_database,
 )
 from app.schemas.order import (
     OrderCreate,
+    OrderListResponse,
     OrderResponse,
 )
+from app.services.order_validation import validate_order_city
+
 
 router = APIRouter(
     prefix="/orders",
@@ -30,6 +40,21 @@ router = APIRouter(
 )
 def create_order(order: OrderCreate) -> OrderResponse:
     with SessionLocal() as session:
+        try:
+            validate_order_city(
+                session=session,
+                order=order,
+            )
+        except UnsupportedCityError as error:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "code": "UNSUPPORTED_CITY",
+                    "message": str(error),
+                    "city_ibge_code": error.city_ibge_code,
+                },
+            ) from error
+
         existing_order = get_order_by_external_id(
             session,
             order.external_order_id,
@@ -39,6 +64,7 @@ def create_order(order: OrderCreate) -> OrderResponse:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
+                    "code": "DUPLICATE_EXTERNAL_ORDER_ID",
                     "message": (
                         "Já existe uma Ordem de Serviço "
                         "com este external_order_id."
@@ -64,6 +90,39 @@ def create_order(order: OrderCreate) -> OrderResponse:
 
 
 @router.get(
+    "",
+    response_model=OrderListResponse,
+    summary="Lista as Ordens de Serviço",
+)
+def list_orders(
+    limit: int = Query(
+        default=20,
+        ge=1,
+        le=100,
+        description="Quantidade máxima de resultados",
+    ),
+    offset: int = Query(
+        default=0,
+        ge=0,
+        description="Quantidade de registros ignorados",
+    ),
+) -> OrderListResponse:
+    with SessionLocal() as session:
+        orders, total = list_orders_from_database(
+            session=session,
+            limit=limit,
+            offset=offset,
+        )
+
+        return OrderListResponse(
+            total=total,
+            limit=limit,
+            offset=offset,
+            items=orders,
+        )
+
+
+@router.get(
     "/{internal_order_id}",
     response_model=OrderResponse,
     summary="Consulta uma Ordem de Serviço",
@@ -78,7 +137,15 @@ def get_order(internal_order_id: UUID) -> OrderResponse:
         if order is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Ordem de Serviço não encontrada",
+                detail={
+                    "code": "ORDER_NOT_FOUND",
+                    "message": (
+                        "Ordem de Serviço não encontrada."
+                    ),
+                    "internal_order_id": (
+                        str(internal_order_id)
+                    ),
+                },
             )
 
         return order

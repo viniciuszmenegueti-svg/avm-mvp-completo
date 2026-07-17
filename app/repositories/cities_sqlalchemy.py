@@ -11,9 +11,7 @@ def list_active_cities(
     statement = (
         select(CityModel)
         .where(CityModel.active.is_(True))
-        .order_by(
-            CityModel.name.asc(),
-        )
+        .order_by(CityModel.name.asc())
     )
 
     database_cities = session.scalars(
@@ -24,3 +22,25 @@ def list_active_cities(
         CityResponse.model_validate(city)
         for city in database_cities
     ]
+
+
+def get_active_city_by_ibge_code(
+    session: Session,
+    city_ibge_code: str,
+) -> CityResponse | None:
+    statement = (
+        select(CityModel)
+        .where(
+            CityModel.city_ibge_code == city_ibge_code,
+            CityModel.active.is_(True),
+        )
+    )
+
+    database_city = session.scalar(statement)
+
+    if database_city is None:
+        return None
+
+    return CityResponse.model_validate(
+        database_city
+    )

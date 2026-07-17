@@ -22,67 +22,67 @@ from app.infrastructure.database import (
 )
 
 
-TEST_CITIES = [
-    CityModel(
-        city_ibge_code="3304557",
-        name="Rio de Janeiro",
-        state="RJ",
-        active=True,
-    ),
-    CityModel(
-        city_ibge_code="3550308",
-        name="São Paulo",
-        state="SP",
-        active=True,
-    ),
-    CityModel(
-        city_ibge_code="5300108",
-        name="Brasília",
-        state="DF",
-        active=True,
-    ),
-    CityModel(
-        city_ibge_code="2927408",
-        name="Salvador",
-        state="BA",
-        active=True,
-    ),
-    CityModel(
-        city_ibge_code="3106200",
-        name="Belo Horizonte",
-        state="MG",
-        active=True,
-    ),
-    CityModel(
-        city_ibge_code="4106902",
-        name="Curitiba",
-        state="PR",
-        active=True,
-    ),
-    CityModel(
-        city_ibge_code="2611606",
-        name="Recife",
-        state="PE",
-        active=True,
-    ),
-    CityModel(
-        city_ibge_code="2304400",
-        name="Fortaleza",
-        state="CE",
-        active=True,
-    ),
-    CityModel(
-        city_ibge_code="5208707",
-        name="Goiânia",
-        state="GO",
-        active=True,
-    ),
-    CityModel(
-        city_ibge_code="4314902",
-        name="Porto Alegre",
-        state="RS",
-        active=True,
-    ),
+TEST_CITIES_DATA = [
+    {
+        "city_ibge_code": "3304557",
+        "name": "Rio de Janeiro",
+        "state": "RJ",
+        "active": True,
+    },
+    {
+        "city_ibge_code": "3550308",
+        "name": "São Paulo",
+        "state": "SP",
+        "active": True,
+    },
+    {
+        "city_ibge_code": "5300108",
+        "name": "Brasília",
+        "state": "DF",
+        "active": True,
+    },
+    {
+        "city_ibge_code": "2927408",
+        "name": "Salvador",
+        "state": "BA",
+        "active": True,
+    },
+    {
+        "city_ibge_code": "3106200",
+        "name": "Belo Horizonte",
+        "state": "MG",
+        "active": True,
+    },
+    {
+        "city_ibge_code": "4106902",
+        "name": "Curitiba",
+        "state": "PR",
+        "active": True,
+    },
+    {
+        "city_ibge_code": "2611606",
+        "name": "Recife",
+        "state": "PE",
+        "active": True,
+    },
+    {
+        "city_ibge_code": "2304400",
+        "name": "Fortaleza",
+        "state": "CE",
+        "active": True,
+    },
+    {
+        "city_ibge_code": "5208707",
+        "name": "Goiânia",
+        "state": "GO",
+        "active": True,
+    },
+    {
+        "city_ibge_code": "4314902",
+        "name": "Porto Alegre",
+        "state": "RS",
+        "active": True,
+    },
 ]
 
 
@@ -94,7 +94,14 @@ def prepare_test_database():
     with SessionLocal() as session:
         session.execute(delete(OrderModel))
         session.execute(delete(CityModel))
-        session.add_all(TEST_CITIES)
+
+        session.add_all(
+            [
+                CityModel(**city_data)
+                for city_data in TEST_CITIES_DATA
+            ]
+        )
+
         session.commit()
 
     yield

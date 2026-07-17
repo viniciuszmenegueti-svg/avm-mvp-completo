@@ -1,6 +1,7 @@
 ﻿import json
+from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.domain.order_model import OrderModel
@@ -16,7 +17,7 @@ def create_order(
     session: Session,
     order: OrderCreate,
     internal_order_id: str,
-    received_at,
+    received_at: datetime,
 ) -> OrderResponse:
     database_order = OrderModel(
         internal_order_id=internal_order_id,
@@ -62,6 +63,36 @@ def get_order_by_external_id(
         return None
 
     return order_model_to_response(database_order)
+
+
+def list_orders(
+    session: Session,
+    limit: int,
+    offset: int,
+) -> tuple[list[OrderResponse], int]:
+    total_statement = select(
+        func.count(OrderModel.internal_order_id)
+    )
+
+    total = session.scalar(total_statement) or 0
+
+    statement = (
+        select(OrderModel)
+        .order_by(OrderModel.received_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+
+    database_orders = session.scalars(
+        statement
+    ).all()
+
+    orders = [
+        order_model_to_response(database_order)
+        for database_order in database_orders
+    ]
+
+    return orders, total
 
 
 def order_model_to_response(

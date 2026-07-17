@@ -21,9 +21,9 @@ def apartment_payload(
         "external_order_id": external_order_id,
         "property": {
             "property_type": "APARTMENT",
-            "state": "ES",
-            "city": "Vitória",
-            "city_ibge_code": "3205309",
+            "state": "SP",
+            "city": "São Paulo",
+            "city_ibge_code": "3550308",
             "postal_code": "29060-000",
             "neighborhood": "Jardim da Penha",
             "street": "Avenida Fernando Ferrari",
@@ -141,3 +141,31 @@ def test_different_external_ids_are_allowed() -> None:
         first_response.json()["internal_order_id"]
         != second_response.json()["internal_order_id"]
     )
+
+
+def test_rejects_order_from_unsupported_city() -> None:
+    payload = apartment_payload(
+        "UNSUPPORTED-CITY-001"
+    )
+
+    payload["property"]["state"] = "ES"
+    payload["property"]["city"] = "Vitória"
+    payload["property"]["city_ibge_code"] = "3205309"
+
+    response = client.post(
+        "/orders",
+        json=payload,
+    )
+
+    assert response.status_code == 422
+
+    detail = response.json()["detail"]
+
+    assert detail == {
+        "code": "UNSUPPORTED_CITY",
+        "message": (
+            "A cidade informada não está habilitada "
+            "para processamento de AVM."
+        ),
+        "city_ibge_code": "3205309",
+    }
