@@ -13,10 +13,10 @@ from app.domain.exceptions import (
     UnsupportedCityError,
 )
 from app.infrastructure.database import SessionLocal
-from app.repositories.orders_sqlite import (
+from app.repositories.orders_sqlalchemy import (
     create_order as create_order_in_database,
 )
-from app.repositories.orders_sqlite import (
+from app.repositories.orders_sqlalchemy import (
     get_order_by_external_id,
     get_order_by_internal_id,
     list_orders as list_orders_from_database,
@@ -165,3 +165,4 @@ def get_order(internal_order_id: UUID) -> OrderResponse:
             )
 
         return order
+
