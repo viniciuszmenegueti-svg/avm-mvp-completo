@@ -199,3 +199,78 @@ def test_rejects_order_when_city_does_not_match_ibge_code() -> None:
         "expected_city": "São Paulo",
         "expected_state": "SP",
     }
+
+
+
+def test_list_orders_when_database_is_empty() -> None:
+    response = client.get("/orders")
+
+    assert response.status_code == 200
+
+    assert response.json() == {
+        "total": 0,
+        "limit": 20,
+        "offset": 0,
+        "items": [],
+    }
+
+
+def test_list_orders() -> None:
+    client.post(
+        "/orders",
+        json=apartment_payload("LIST-ORDER-001"),
+    )
+    client.post(
+        "/orders",
+        json=apartment_payload("LIST-ORDER-002"),
+    )
+
+    response = client.get("/orders")
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["total"] == 2
+    assert body["limit"] == 20
+    assert body["offset"] == 0
+    assert len(body["items"]) == 2
+
+    returned_external_ids = {
+        item["external_order_id"]
+        for item in body["items"]
+    }
+
+    assert returned_external_ids == {
+        "LIST-ORDER-001",
+        "LIST-ORDER-002",
+    }
+
+
+def test_list_orders_with_pagination() -> None:
+    for order_number in range(1, 4):
+        response = client.post(
+            "/orders",
+            json=apartment_payload(
+                f"PAGINATION-{order_number:03d}"
+            ),
+        )
+
+        assert response.status_code == 201
+
+    response = client.get(
+        "/orders",
+        params={
+            "limit": 1,
+            "offset": 1,
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["total"] == 3
+    assert body["limit"] == 1
+    assert body["offset"] == 1
+    assert len(body["items"]) == 1
