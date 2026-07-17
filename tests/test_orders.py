@@ -338,3 +338,84 @@ def test_list_orders_rejects_invalid_status() -> None:
     )
 
     assert response.status_code == 422
+
+
+def test_updates_order_status() -> None:
+    create_response = client.post(
+        "/orders",
+        json=apartment_payload("STATUS-ENDPOINT-001"),
+    )
+
+    internal_order_id = create_response.json()[
+        "internal_order_id"
+    ]
+
+    update_response = client.patch(
+        f"/orders/{internal_order_id}/status",
+        json={
+            "status": "VALIDATING_INPUT",
+        },
+    )
+
+    assert update_response.status_code == 200
+    assert update_response.json()["status"] == (
+        "VALIDATING_INPUT"
+    )
+
+    get_response = client.get(
+        f"/orders/{internal_order_id}"
+    )
+
+    assert get_response.status_code == 200
+    assert get_response.json()["status"] == (
+        "VALIDATING_INPUT"
+    )
+
+
+def test_rejects_invalid_order_status_transition() -> None:
+    create_response = client.post(
+        "/orders",
+        json=apartment_payload("STATUS-ENDPOINT-002"),
+    )
+
+    internal_order_id = create_response.json()[
+        "internal_order_id"
+    ]
+
+    response = client.patch(
+        f"/orders/{internal_order_id}/status",
+        json={
+            "status": "COMPLETED",
+        },
+    )
+
+    assert response.status_code == 409
+
+    assert response.json()["detail"] == {
+        "code": "INVALID_STATUS_TRANSITION",
+        "message": (
+            "A transição de RECEIVED "
+            "para COMPLETED não é permitida."
+        ),
+        "current_status": "RECEIVED",
+        "new_status": "COMPLETED",
+    }
+
+
+def test_update_status_returns_not_found() -> None:
+    internal_order_id = (
+        "00000000-0000-0000-0000-000000000000"
+    )
+
+    response = client.patch(
+        f"/orders/{internal_order_id}/status",
+        json={
+            "status": "VALIDATING_INPUT",
+        },
+    )
+
+    assert response.status_code == 404
+
+    assert response.json()["detail"]["code"] == (
+        "ORDER_NOT_FOUND"
+    )

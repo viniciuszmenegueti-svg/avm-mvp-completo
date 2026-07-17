@@ -10,6 +10,7 @@ from fastapi import (
 
 from app.domain.exceptions import (
     CityDataMismatchError,
+    InvalidOrderStatusTransitionError,
     UnsupportedCityError,
 )
 from app.infrastructure.database import SessionLocal
@@ -20,12 +21,17 @@ from app.repositories.orders_sqlalchemy import (
     get_order_by_external_id,
     get_order_by_internal_id,
     list_orders as list_orders_from_database,
+    update_order_status as update_order_status_in_database,
 )
 from app.schemas.order import (
     OrderCreate,
     OrderListResponse,
     OrderResponse,
     OrderStatus,
+    OrderStatusUpdate,
+)
+from app.services.order_status import (
+    validate_order_status_transition,
 )
 from app.services.order_validation import validate_order_city
 
@@ -140,6 +146,70 @@ def list_orders(
         )
 
 
+@router.patch(
+    "/{internal_order_id}/status",
+    response_model=OrderResponse,
+    summary="Atualiza o status de uma Ordem de Serviço",
+)
+def update_order_status(
+    internal_order_id: UUID,
+    status_update: OrderStatusUpdate,
+) -> OrderResponse:
+    with SessionLocal() as session:
+        existing_order = get_order_by_internal_id(
+            session=session,
+            internal_order_id=str(internal_order_id),
+        )
+
+        if existing_order is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "code": "ORDER_NOT_FOUND",
+                    "message": (
+                        "Ordem de Serviço não encontrada."
+                    ),
+                    "internal_order_id": str(internal_order_id),
+                },
+            )
+
+        try:
+            validate_order_status_transition(
+                current_status=existing_order.status,
+                new_status=status_update.status,
+            )
+        except InvalidOrderStatusTransitionError as error:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "INVALID_STATUS_TRANSITION",
+                    "message": str(error),
+                    "current_status": error.current_status,
+                    "new_status": error.new_status,
+                },
+            ) from error
+
+        updated_order = update_order_status_in_database(
+            session=session,
+            internal_order_id=str(internal_order_id),
+            new_status=status_update.status,
+        )
+
+        if updated_order is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "code": "ORDER_NOT_FOUND",
+                    "message": (
+                        "Ordem de Serviço não encontrada."
+                    ),
+                    "internal_order_id": str(internal_order_id),
+                },
+            )
+
+        return updated_order
+
+
 @router.get(
     "/{internal_order_id}",
     response_model=OrderResponse,
@@ -165,4 +235,3 @@ def get_order(internal_order_id: UUID) -> OrderResponse:
             )
 
         return order
-
