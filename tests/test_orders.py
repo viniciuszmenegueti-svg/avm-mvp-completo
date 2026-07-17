@@ -274,3 +274,67 @@ def test_list_orders_with_pagination() -> None:
     assert body["limit"] == 1
     assert body["offset"] == 1
     assert len(body["items"]) == 1
+
+
+def test_list_orders_filtered_by_status() -> None:
+    client.post(
+        "/orders",
+        json=apartment_payload("STATUS-FILTER-001"),
+    )
+    client.post(
+        "/orders",
+        json=apartment_payload("STATUS-FILTER-002"),
+    )
+
+    response = client.get(
+        "/orders",
+        params={
+            "order_status": "RECEIVED",
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["total"] == 2
+    assert len(body["items"]) == 2
+
+    assert all(
+        item["status"] == "RECEIVED"
+        for item in body["items"]
+    )
+
+
+def test_list_orders_filtered_by_status_without_results() -> None:
+    client.post(
+        "/orders",
+        json=apartment_payload("STATUS-EMPTY-001"),
+    )
+
+    response = client.get(
+        "/orders",
+        params={
+            "order_status": "COMPLETED",
+        },
+    )
+
+    assert response.status_code == 200
+
+    assert response.json() == {
+        "total": 0,
+        "limit": 20,
+        "offset": 0,
+        "items": [],
+    }
+
+
+def test_list_orders_rejects_invalid_status() -> None:
+    response = client.get(
+        "/orders",
+        params={
+            "order_status": "INVALID_STATUS",
+        },
+    )
+
+    assert response.status_code == 422

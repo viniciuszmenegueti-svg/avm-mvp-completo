@@ -25,6 +25,7 @@ from app.schemas.order import (
     OrderCreate,
     OrderListResponse,
     OrderResponse,
+    OrderStatus,
 )
 from app.services.order_validation import validate_order_city
 
@@ -118,12 +119,17 @@ def list_orders(
         ge=0,
         description="Quantidade de registros ignorados",
     ),
+    order_status: OrderStatus | None = Query(
+        default=None,
+        description="Filtra as ordens pelo status",
+    ),
 ) -> OrderListResponse:
     with SessionLocal() as session:
         orders, total = list_orders_from_database(
             session=session,
             limit=limit,
             offset=offset,
+            order_status=order_status,
         )
 
         return OrderListResponse(

@@ -69,15 +69,24 @@ def list_orders(
     session: Session,
     limit: int,
     offset: int,
+    order_status: OrderStatus | None = None,
 ) -> tuple[list[OrderResponse], int]:
+    filters = []
+
+    if order_status is not None:
+        filters.append(
+            OrderModel.status == order_status.value
+        )
+
     total_statement = select(
         func.count(OrderModel.internal_order_id)
-    )
+    ).where(*filters)
 
     total = session.scalar(total_statement) or 0
 
     statement = (
         select(OrderModel)
+        .where(*filters)
         .order_by(OrderModel.received_at.desc())
         .limit(limit)
         .offset(offset)
