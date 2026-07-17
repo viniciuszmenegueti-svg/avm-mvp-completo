@@ -1,6 +1,9 @@
 ﻿import pytest
 
-from app.domain.exceptions import UnsupportedCityError
+from app.domain.exceptions import (
+    CityDataMismatchError,
+    UnsupportedCityError,
+)
 from app.infrastructure.database import SessionLocal
 from app.schemas.order import OrderCreate
 from app.services.order_validation import (
@@ -82,9 +85,47 @@ def test_rejects_unknown_ibge_code() -> None:
     )
 
     with SessionLocal() as session:
+        with pytest.raises(UnsupportedCityError):
+            validate_order_city(
+                session=session,
+                order=order,
+            )
+
+
+def test_rejects_city_name_that_does_not_match_ibge_code() -> None:
+    order = OrderCreate.model_validate(
+        order_payload(
+            city_ibge_code="3550308",
+            city="Rio de Janeiro",
+            state="SP",
+        )
+    )
+
+    with SessionLocal() as session:
         with pytest.raises(
-            UnsupportedCityError
-        ):
+            CityDataMismatchError
+        ) as error:
+            validate_order_city(
+                session=session,
+                order=order,
+            )
+
+    assert error.value.city_ibge_code == "3550308"
+    assert error.value.expected_city == "São Paulo"
+    assert error.value.expected_state == "SP"
+
+
+def test_rejects_state_that_does_not_match_ibge_code() -> None:
+    order = OrderCreate.model_validate(
+        order_payload(
+            city_ibge_code="3550308",
+            city="São Paulo",
+            state="RJ",
+        )
+    )
+
+    with SessionLocal() as session:
+        with pytest.raises(CityDataMismatchError):
             validate_order_city(
                 session=session,
                 order=order,

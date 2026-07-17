@@ -8,7 +8,10 @@ from fastapi import (
     status,
 )
 
-from app.domain.exceptions import UnsupportedCityError
+from app.domain.exceptions import (
+    CityDataMismatchError,
+    UnsupportedCityError,
+)
 from app.infrastructure.database import SessionLocal
 from app.repositories.orders_sqlite import (
     create_order as create_order_in_database,
@@ -47,11 +50,22 @@ def create_order(order: OrderCreate) -> OrderResponse:
             )
         except UnsupportedCityError as error:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail={
                     "code": "UNSUPPORTED_CITY",
                     "message": str(error),
                     "city_ibge_code": error.city_ibge_code,
+                },
+            ) from error
+        except CityDataMismatchError as error:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail={
+                    "code": "CITY_DATA_MISMATCH",
+                    "message": str(error),
+                    "city_ibge_code": error.city_ibge_code,
+                    "expected_city": error.expected_city,
+                    "expected_state": error.expected_state,
                 },
             ) from error
 
@@ -69,9 +83,7 @@ def create_order(order: OrderCreate) -> OrderResponse:
                         "Já existe uma Ordem de Serviço "
                         "com este external_order_id."
                     ),
-                    "external_order_id": (
-                        order.external_order_id
-                    ),
+                    "external_order_id": order.external_order_id,
                     "internal_order_id": (
                         existing_order.internal_order_id
                     ),
@@ -142,9 +154,7 @@ def get_order(internal_order_id: UUID) -> OrderResponse:
                     "message": (
                         "Ordem de Serviço não encontrada."
                     ),
-                    "internal_order_id": (
-                        str(internal_order_id)
-                    ),
+                    "internal_order_id": str(internal_order_id),
                 },
             )
 
