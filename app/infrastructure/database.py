@@ -1,11 +1,17 @@
 ﻿import os
 from pathlib import Path
 
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+load_dotenv(
+    dotenv_path=PROJECT_ROOT / ".env",
+    override=False,
+)
 
 DATABASE_DIRECTORY = PROJECT_ROOT / "data" / "database"
 DATABASE_DIRECTORY.mkdir(
@@ -31,13 +37,11 @@ if DATABASE_URL.startswith("sqlite"):
         "check_same_thread": False,
     }
 
-
 engine = create_engine(
     DATABASE_URL,
     connect_args=connect_args,
     pool_pre_ping=True,
 )
-
 
 SessionLocal = sessionmaker(
     bind=engine,
