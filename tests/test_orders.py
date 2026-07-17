@@ -169,3 +169,33 @@ def test_rejects_order_from_unsupported_city() -> None:
         ),
         "city_ibge_code": "3205309",
     }
+
+
+def test_rejects_order_when_city_does_not_match_ibge_code() -> None:
+    payload = apartment_payload(
+        "CITY-MISMATCH-001"
+    )
+
+    payload["property"]["state"] = "RJ"
+    payload["property"]["city"] = "Rio de Janeiro"
+    payload["property"]["city_ibge_code"] = "3550308"
+
+    response = client.post(
+        "/orders",
+        json=payload,
+    )
+
+    assert response.status_code == 422
+
+    detail = response.json()["detail"]
+
+    assert detail == {
+        "code": "CITY_DATA_MISMATCH",
+        "message": (
+            "O nome da cidade ou a UF não corresponde "
+            "ao código IBGE informado."
+        ),
+        "city_ibge_code": "3550308",
+        "expected_city": "São Paulo",
+        "expected_state": "SP",
+    }
