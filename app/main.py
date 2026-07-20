@@ -14,6 +14,7 @@ from app.core.exception_handlers import (
 from app.core.http_logging import HttpLoggingMiddleware
 from app.core.logging_config import configure_logging
 from app.core.request_id import RequestIdMiddleware
+from app.core.security_headers import SecurityHeadersMiddleware
 from app.core.config import (
     APP_DESCRIPTION,
     APP_NAME,
@@ -30,6 +31,7 @@ app = FastAPI(
     description=APP_DESCRIPTION,
 )
 
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(HttpLoggingMiddleware)
 app.add_middleware(RequestIdMiddleware)
 
@@ -62,6 +64,7 @@ app.include_router(health_router)
 app.include_router(orders_router)
 app.include_router(order_status_history_router)
 app.include_router(cities_router)
+
 
 
 
