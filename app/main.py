@@ -6,12 +6,16 @@ from app.api.routes.order_status_history import (
     router as order_status_history_router,
 )
 from app.api.routes.orders import router as orders_router
+from app.core.logging_config import configure_logging
 from app.core.request_id import RequestIdMiddleware
 from app.core.config import (
     APP_DESCRIPTION,
     APP_NAME,
     APP_VERSION,
 )
+
+
+configure_logging()
 
 
 app = FastAPI(
@@ -42,4 +46,5 @@ app.include_router(health_router)
 app.include_router(orders_router)
 app.include_router(order_status_history_router)
 app.include_router(cities_router)
+
 
