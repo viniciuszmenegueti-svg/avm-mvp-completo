@@ -6,6 +6,7 @@ from app.api.routes.order_status_history import (
     router as order_status_history_router,
 )
 from app.api.routes.orders import router as orders_router
+from app.core.http_logging import HttpLoggingMiddleware
 from app.core.logging_config import configure_logging
 from app.core.request_id import RequestIdMiddleware
 from app.core.config import (
@@ -24,6 +25,7 @@ app = FastAPI(
     description=APP_DESCRIPTION,
 )
 
+app.add_middleware(HttpLoggingMiddleware)
 app.add_middleware(RequestIdMiddleware)
 
 
@@ -46,5 +48,6 @@ app.include_router(health_router)
 app.include_router(orders_router)
 app.include_router(order_status_history_router)
 app.include_router(cities_router)
+
 
 
