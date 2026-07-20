@@ -31,6 +31,9 @@ jobs:
       - name: Verificar qualidade do codigo
         run: ruff check .
 
+      - name: Verificar formatacao do codigo
+        run: ruff format --check .
+
       - name: Executar testes
         run: python -m pytest -q
 
