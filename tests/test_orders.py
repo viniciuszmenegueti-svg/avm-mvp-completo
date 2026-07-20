@@ -600,3 +600,42 @@ def test_status_update_rolls_back_when_history_fails(
     assert get_response.json()["status"] == "RECEIVED"
 
 
+
+
+def test_get_order_by_external_id() -> None:
+    external_order_id = "EXTERNAL-LOOKUP-001"
+
+    create_response = client.post(
+        "/orders",
+        json=apartment_payload(external_order_id),
+    )
+
+    assert create_response.status_code == 201
+
+    response = client.get(
+        f"/orders/external/{external_order_id}"
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["external_order_id"] == external_order_id
+    assert body["internal_order_id"] == (
+        create_response.json()["internal_order_id"]
+    )
+    assert body["status"] == "RECEIVED"
+
+
+def test_get_order_by_external_id_returns_not_found() -> None:
+    response = client.get(
+        "/orders/external/EXTERNAL-NOT-FOUND"
+    )
+
+    assert response.status_code == 404
+
+    assert response.json()["detail"] == {
+        "code": "ORDER_NOT_FOUND",
+        "message": "Ordem de Serviço não encontrada.",
+        "external_order_id": "EXTERNAL-NOT-FOUND",
+    }

@@ -187,6 +187,34 @@ def update_order_status(
 
 
 @router.get(
+    "/external/{external_order_id}",
+    response_model=OrderResponse,
+    summary="Consulta uma ordem pelo identificador externo",
+)
+def get_order_by_external_identifier(
+    external_order_id: str,
+) -> OrderResponse:
+    with SessionLocal() as session:
+        order = get_order_by_external_id(
+            session=session,
+            external_order_id=external_order_id,
+        )
+
+        if order is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "code": "ORDER_NOT_FOUND",
+                    "message": (
+                        "Ordem de Serviço não encontrada."
+                    ),
+                    "external_order_id": external_order_id,
+                },
+            )
+
+        return order
+
+@router.get(
     "/{internal_order_id}",
     response_model=OrderResponse,
     summary="Consulta uma Ordem de Serviço",
@@ -211,3 +239,4 @@ def get_order(internal_order_id: UUID) -> OrderResponse:
             )
 
         return order
+
