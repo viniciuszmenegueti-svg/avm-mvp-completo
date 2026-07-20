@@ -1,4 +1,5 @@
-﻿from uuid import uuid4
+﻿from contextvars import ContextVar, Token
+from uuid import uuid4
 
 from starlette.datastructures import MutableHeaders
 from starlette.types import (
@@ -8,6 +9,16 @@ from starlette.types import (
     Scope,
     Send,
 )
+
+
+request_id_context: ContextVar[str] = ContextVar(
+    "request_id",
+    default="-",
+)
+
+
+def get_request_id() -> str:
+    return request_id_context.get()
 
 
 class RequestIdMiddleware:
@@ -43,6 +54,10 @@ class RequestIdMiddleware:
         else:
             request_id = str(uuid4())
 
+        token: Token[str] = request_id_context.set(
+            request_id
+        )
+
         async def send_with_request_id(
             message: Message,
         ) -> None:
@@ -56,8 +71,11 @@ class RequestIdMiddleware:
 
             await send(message)
 
-        await self.app(
-            scope,
-            receive,
-            send_with_request_id,
-        )
+        try:
+            await self.app(
+                scope,
+                receive,
+                send_with_request_id,
+            )
+        finally:
+            request_id_context.reset(token)
