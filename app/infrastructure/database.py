@@ -30,17 +30,25 @@ DATABASE_URL = os.getenv(
     DEFAULT_DATABASE_URL,
 )
 
-connect_args = {}
+connect_args: dict = {}
 
 if DATABASE_URL.startswith("sqlite"):
     connect_args = {
         "check_same_thread": False,
     }
 
+elif DATABASE_URL.startswith(
+    ("postgresql://", "postgresql+psycopg://")
+):
+    connect_args = {
+        "connect_timeout": 3,
+    }
+
 engine = create_engine(
     DATABASE_URL,
     connect_args=connect_args,
     pool_pre_ping=True,
+    pool_recycle=300,
 )
 
 SessionLocal = sessionmaker(
