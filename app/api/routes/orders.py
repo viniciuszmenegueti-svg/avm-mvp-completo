@@ -14,9 +14,6 @@ from app.domain.exceptions import (
     UnsupportedCityError,
 )
 from app.infrastructure.database import SessionLocal
-from app.repositories.order_status_history_sqlalchemy import (
-    create_order_status_history,
-)
 from app.repositories.orders_sqlalchemy import (
     create_order as create_order_in_database,
 )
@@ -24,7 +21,6 @@ from app.repositories.orders_sqlalchemy import (
     get_order_by_external_id,
     get_order_by_internal_id,
     list_orders as list_orders_from_database,
-    update_order_status as update_order_status_in_database,
 )
 from app.schemas.order import (
     OrderCreate,
@@ -33,8 +29,8 @@ from app.schemas.order import (
     OrderStatus,
     OrderStatusUpdate,
 )
-from app.services.order_status import (
-    validate_order_status_transition,
+from app.services.order_status_update import (
+    update_order_status_with_history,
 )
 from app.services.order_validation import validate_order_city
 
@@ -158,26 +154,10 @@ def update_order_status(
     order_id = str(internal_order_id)
 
     with SessionLocal() as session:
-        existing_order = get_order_by_internal_id(
-            session=session,
-            internal_order_id=order_id,
-        )
-
-        if existing_order is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "code": "ORDER_NOT_FOUND",
-                    "message": (
-                        "Ordem de Serviço não encontrada."
-                    ),
-                    "internal_order_id": order_id,
-                },
-            )
-
         try:
-            validate_order_status_transition(
-                current_status=existing_order.status,
+            updated_order = update_order_status_with_history(
+                session=session,
+                internal_order_id=order_id,
                 new_status=status_update.status,
             )
         except InvalidOrderStatusTransitionError as error:
@@ -191,45 +171,19 @@ def update_order_status(
                 },
             ) from error
 
-        try:
-            updated_order = update_order_status_in_database(
-                session=session,
-                internal_order_id=order_id,
-                new_status=status_update.status,
-                commit=False,
+        if updated_order is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "code": "ORDER_NOT_FOUND",
+                    "message": (
+                        "Ordem de Serviço não encontrada."
+                    ),
+                    "internal_order_id": order_id,
+                },
             )
 
-            if updated_order is None:
-                session.rollback()
-
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail={
-                        "code": "ORDER_NOT_FOUND",
-                        "message": (
-                            "Ordem de Serviço não encontrada."
-                        ),
-                        "internal_order_id": order_id,
-                    },
-                )
-
-            create_order_status_history(
-                session=session,
-                internal_order_id=order_id,
-                previous_status=existing_order.status,
-                new_status=status_update.status,
-                commit=False,
-            )
-
-            session.commit()
-
-            return updated_order
-
-        except HTTPException:
-            raise
-        except Exception:
-            session.rollback()
-            raise
+        return updated_order
 
 
 @router.get(

@@ -560,7 +560,7 @@ def test_get_status_history_rejects_invalid_order_id() -> None:
 def test_status_update_rolls_back_when_history_fails(
     monkeypatch,
 ) -> None:
-    from app.api.routes import orders as orders_route
+    from app.services import order_status_update as status_update_service
 
     create_response = client.post(
         "/orders",
@@ -579,7 +579,7 @@ def test_status_update_rolls_back_when_history_fails(
         )
 
     monkeypatch.setattr(
-        orders_route,
+        status_update_service,
         "create_order_status_history",
         fail_history_creation,
     )
@@ -598,4 +598,5 @@ def test_status_update_rolls_back_when_history_fails(
 
     assert get_response.status_code == 200
     assert get_response.json()["status"] == "RECEIVED"
+
 
