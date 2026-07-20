@@ -419,3 +419,41 @@ def test_update_status_returns_not_found() -> None:
     assert response.json()["detail"]["code"] == (
         "ORDER_NOT_FOUND"
     )
+
+
+def test_status_update_creates_history() -> None:
+    from app.infrastructure.database import SessionLocal
+    from app.repositories.order_status_history_sqlalchemy import (
+        list_order_status_history,
+    )
+
+    create_response = client.post(
+        "/orders",
+        json=apartment_payload("STATUS-HISTORY-001"),
+    )
+
+    assert create_response.status_code == 201
+
+    internal_order_id = create_response.json()[
+        "internal_order_id"
+    ]
+
+    update_response = client.patch(
+        f"/orders/{internal_order_id}/status",
+        json={
+            "status": "VALIDATING_INPUT",
+        },
+    )
+
+    assert update_response.status_code == 200
+
+    with SessionLocal() as session:
+        history = list_order_status_history(
+            session=session,
+            internal_order_id=internal_order_id,
+        )
+
+    assert len(history) == 1
+    assert history[0].previous_status == "RECEIVED"
+    assert history[0].new_status == "VALIDATING_INPUT"
+    assert history[0].changed_at is not None

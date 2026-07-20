@@ -14,6 +14,9 @@ from app.domain.exceptions import (
     UnsupportedCityError,
 )
 from app.infrastructure.database import SessionLocal
+from app.repositories.order_status_history_sqlalchemy import (
+    create_order_status_history,
+)
 from app.repositories.orders_sqlalchemy import (
     create_order as create_order_in_database,
 )
@@ -195,6 +198,12 @@ def update_order_status(
             new_status=status_update.status,
         )
 
+        create_order_status_history(
+            session=session,
+            internal_order_id=str(internal_order_id),
+            previous_status=existing_order.status,
+            new_status=status_update.status,
+        )
         if updated_order is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -235,3 +244,5 @@ def get_order(internal_order_id: UUID) -> OrderResponse:
             )
 
         return order
+
+
