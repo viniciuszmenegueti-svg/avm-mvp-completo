@@ -54,6 +54,9 @@ class RequestIdMiddleware:
         else:
             request_id = str(uuid4())
 
+        state = scope.setdefault("state", {})
+        state["request_id"] = request_id
+
         token: Token[str] = request_id_context.set(
             request_id
         )
