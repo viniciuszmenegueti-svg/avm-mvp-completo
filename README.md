@@ -1,5 +1,5 @@
 \# AVM Imóveis API
-
+[![CI](https://github.com/viniciuszmenegueti-svg/avm/actions/workflows/ci.yml/badge.svg)](https://github.com/viniciuszmenegueti-svg/avm/actions/workflows/ci.yml)
 
 
 API para recebimento, validação e processamento de Ordens de Serviço de avaliação imobiliária.
