@@ -15,6 +15,9 @@ os.environ["DATABASE_URL"] = (
 from app.domain import models
 from app.domain.city_model import CityModel
 from app.domain.order_model import OrderModel
+from app.domain.order_status_history_model import (
+    OrderStatusHistoryModel,
+)
 from app.infrastructure.database import (
     Base,
     SessionLocal,
@@ -92,6 +95,9 @@ Base.metadata.create_all(bind=engine)
 @pytest.fixture(autouse=True)
 def prepare_test_database():
     with SessionLocal() as session:
+        session.execute(
+            delete(OrderStatusHistoryModel)
+        )
         session.execute(delete(OrderModel))
         session.execute(delete(CityModel))
 
@@ -107,6 +113,9 @@ def prepare_test_database():
     yield
 
     with SessionLocal() as session:
+        session.execute(
+            delete(OrderStatusHistoryModel)
+        )
         session.execute(delete(OrderModel))
         session.execute(delete(CityModel))
         session.commit()
