@@ -457,3 +457,99 @@ def test_status_update_creates_history() -> None:
     assert history[0].previous_status == "RECEIVED"
     assert history[0].new_status == "VALIDATING_INPUT"
     assert history[0].changed_at is not None
+
+
+def test_get_order_status_history() -> None:
+    create_response = client.post(
+        "/orders",
+        json=apartment_payload("GET-HISTORY-001"),
+    )
+
+    assert create_response.status_code == 201
+
+    internal_order_id = create_response.json()[
+        "internal_order_id"
+    ]
+
+    first_update = client.patch(
+        f"/orders/{internal_order_id}/status",
+        json={
+            "status": "VALIDATING_INPUT",
+        },
+    )
+
+    assert first_update.status_code == 200
+
+    second_update = client.patch(
+        f"/orders/{internal_order_id}/status",
+        json={
+            "status": "COMPLETED",
+        },
+    )
+
+    assert second_update.status_code == 200
+
+    response = client.get(
+        f"/orders/{internal_order_id}/status-history"
+    )
+
+    assert response.status_code == 200
+
+    history = response.json()
+
+    assert len(history) == 2
+
+    assert history[0]["previous_status"] == "RECEIVED"
+    assert history[0]["new_status"] == "VALIDATING_INPUT"
+
+    assert history[1]["previous_status"] == (
+        "VALIDATING_INPUT"
+    )
+    assert history[1]["new_status"] == "COMPLETED"
+
+    assert history[0]["internal_order_id"] == (
+        internal_order_id
+    )
+    assert history[0]["changed_at"]
+
+
+def test_get_empty_order_status_history() -> None:
+    create_response = client.post(
+        "/orders",
+        json=apartment_payload("GET-HISTORY-EMPTY-001"),
+    )
+
+    internal_order_id = create_response.json()[
+        "internal_order_id"
+    ]
+
+    response = client.get(
+        f"/orders/{internal_order_id}/status-history"
+    )
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_get_status_history_returns_not_found() -> None:
+    internal_order_id = (
+        "00000000-0000-0000-0000-000000000000"
+    )
+
+    response = client.get(
+        f"/orders/{internal_order_id}/status-history"
+    )
+
+    assert response.status_code == 404
+
+    assert response.json()["detail"]["code"] == (
+        "ORDER_NOT_FOUND"
+    )
+
+
+def test_get_status_history_rejects_invalid_order_id() -> None:
+    response = client.get(
+        "/orders/identificador-invalido/status-history"
+    )
+
+    assert response.status_code == 422
