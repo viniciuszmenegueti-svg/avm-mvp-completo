@@ -6,14 +6,13 @@ from app.core.config import APP_VERSION
 from app.infrastructure.database import SessionLocal
 
 
-router = APIRouter(tags=["Sistema"])
-
-
-@router.get(
-    "/health",
-    summary="Verifica a saúde da API e do banco de dados",
+router = APIRouter(
+    prefix="/health",
+    tags=["Sistema"],
 )
-def health_check() -> dict[str, str]:
+
+
+def verify_database_connection() -> None:
     try:
         with SessionLocal() as session:
             session.execute(text("SELECT 1"))
@@ -30,9 +29,41 @@ def health_check() -> dict[str, str]:
             },
         ) from error
 
+
+def ready_response() -> dict[str, str]:
+    verify_database_connection()
+
     return {
         "status": "ok",
         "service": "avm-api",
         "version": APP_VERSION,
         "database": "ok",
     }
+
+
+@router.get(
+    "",
+    summary="Verifica a saúde da API e do banco de dados",
+)
+def health_check() -> dict[str, str]:
+    return ready_response()
+
+
+@router.get(
+    "/live",
+    summary="Verifica se a aplicação está em execução",
+)
+def liveness_check() -> dict[str, str]:
+    return {
+        "status": "ok",
+        "service": "avm-api",
+        "version": APP_VERSION,
+    }
+
+
+@router.get(
+    "/ready",
+    summary="Verifica se a aplicação está pronta",
+)
+def readiness_check() -> dict[str, str]:
+    return ready_response()

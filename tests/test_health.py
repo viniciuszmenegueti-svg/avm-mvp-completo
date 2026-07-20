@@ -18,6 +18,29 @@ def test_health_endpoint() -> None:
     }
 
 
+def test_liveness_endpoint() -> None:
+    response = client.get("/health/live")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "ok",
+        "service": "avm-api",
+        "version": "0.1.0",
+    }
+
+
+def test_readiness_endpoint() -> None:
+    response = client.get("/health/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "ok",
+        "service": "avm-api",
+        "version": "0.1.0",
+        "database": "ok",
+    }
+
+
 def test_root_endpoint() -> None:
     response = client.get("/")
 
@@ -61,14 +84,24 @@ def test_health_returns_503_when_database_is_unavailable(
         FailingSession,
     )
 
-    response = client.get("/health")
+    health_response = client.get("/health")
+    ready_response = client.get("/health/ready")
+    live_response = client.get("/health/live")
 
-    assert response.status_code == 503
+    assert health_response.status_code == 503
+    assert ready_response.status_code == 503
 
-    assert response.json()["detail"] == {
+    assert health_response.json()["detail"] == {
         "code": "DATABASE_UNAVAILABLE",
         "message": (
             "A API está em execução, mas o banco "
             "de dados não está disponível."
         ),
     }
+
+    assert ready_response.json()["detail"]["code"] == (
+        "DATABASE_UNAVAILABLE"
+    )
+
+    assert live_response.status_code == 200
+    assert live_response.json()["status"] == "ok"
