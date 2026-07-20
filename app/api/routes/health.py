@@ -1,9 +1,19 @@
-﻿from fastapi import APIRouter, HTTPException, status
+﻿from typing import Annotated
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+)
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from app.core.config import APP_VERSION
-from app.infrastructure.database import SessionLocal
+from app.infrastructure.dependencies import (
+    get_database_session,
+)
 
 
 router = APIRouter(
@@ -11,11 +21,17 @@ router = APIRouter(
     tags=["Sistema"],
 )
 
+DatabaseSession = Annotated[
+    Session,
+    Depends(get_database_session),
+]
 
-def verify_database_connection() -> None:
+
+def verify_database_connection(
+    session: Session,
+) -> None:
     try:
-        with SessionLocal() as session:
-            session.execute(text("SELECT 1"))
+        session.execute(text("SELECT 1"))
 
     except SQLAlchemyError as error:
         raise HTTPException(
@@ -30,8 +46,10 @@ def verify_database_connection() -> None:
         ) from error
 
 
-def ready_response() -> dict[str, str]:
-    verify_database_connection()
+def ready_response(
+    session: Session,
+) -> dict[str, str]:
+    verify_database_connection(session)
 
     return {
         "status": "ok",
@@ -45,8 +63,10 @@ def ready_response() -> dict[str, str]:
     "",
     summary="Verifica a saúde da API e do banco de dados",
 )
-def health_check() -> dict[str, str]:
-    return ready_response()
+def health_check(
+    session: DatabaseSession,
+) -> dict[str, str]:
+    return ready_response(session)
 
 
 @router.get(
@@ -65,5 +85,7 @@ def liveness_check() -> dict[str, str]:
     "/ready",
     summary="Verifica se a aplicação está pronta",
 )
-def readiness_check() -> dict[str, str]:
-    return ready_response()
+def readiness_check(
+    session: DatabaseSession,
+) -> dict[str, str]:
+    return ready_response(session)

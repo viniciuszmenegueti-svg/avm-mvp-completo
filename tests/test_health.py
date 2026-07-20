@@ -1,5 +1,12 @@
-﻿from fastapi.testclient import TestClient
+﻿from collections.abc import Generator
 
+from fastapi.testclient import TestClient
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import Session
+
+from app.infrastructure.dependencies import (
+    get_database_session,
+)
 from app.main import app
 
 
@@ -50,26 +57,9 @@ def test_root_endpoint() -> None:
     )
 
 
-def test_health_returns_503_when_database_is_unavailable(
-    monkeypatch,
-) -> None:
-    from sqlalchemy.exc import OperationalError
-
-    from app.api.routes import health as health_route
-
+def test_health_returns_503_when_database_is_unavailable() -> None:
     class FailingSession:
-        def __enter__(self):
-            return self
-
-        def __exit__(
-            self,
-            exc_type,
-            exc_value,
-            traceback,
-        ) -> None:
-            return None
-
-        def execute(self, statement):
+        def execute(self, statement) -> None:
             raise OperationalError(
                 statement="SELECT 1",
                 params={},
@@ -78,15 +68,24 @@ def test_health_returns_503_when_database_is_unavailable(
                 ),
             )
 
-    monkeypatch.setattr(
-        health_route,
-        "SessionLocal",
-        FailingSession,
-    )
+    def override_database_session() -> Generator[
+        Session,
+        None,
+        None,
+    ]:
+        yield FailingSession()
 
-    health_response = client.get("/health")
-    ready_response = client.get("/health/ready")
-    live_response = client.get("/health/live")
+    app.dependency_overrides[
+        get_database_session
+    ] = override_database_session
+
+    try:
+        health_response = client.get("/health")
+        ready_response = client.get("/health/ready")
+        live_response = client.get("/health/live")
+
+    finally:
+        app.dependency_overrides.clear()
 
     assert health_response.status_code == 503
     assert ready_response.status_code == 503
