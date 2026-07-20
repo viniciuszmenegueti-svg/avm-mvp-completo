@@ -1,4 +1,4 @@
-﻿import pytest
+import pytest
 
 from app.domain.exceptions import (
     InvalidOrderStatusTransitionError,
@@ -60,9 +60,7 @@ def test_validation_accepts_valid_transition() -> None:
 
 
 def test_validation_raises_error_for_invalid_transition() -> None:
-    with pytest.raises(
-        InvalidOrderStatusTransitionError
-    ) as error:
+    with pytest.raises(InvalidOrderStatusTransitionError) as error:
         validate_order_status_transition(
             current_status=OrderStatus.COMPLETED,
             new_status=OrderStatus.RECEIVED,
@@ -71,6 +69,5 @@ def test_validation_raises_error_for_invalid_transition() -> None:
     assert error.value.current_status == "COMPLETED"
     assert error.value.new_status == "RECEIVED"
     assert str(error.value) == (
-        "A transição de COMPLETED "
-        "para RECEIVED não é permitida."
+        "A transição de COMPLETED para RECEIVED não é permitida."
     )

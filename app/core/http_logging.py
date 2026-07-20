@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 from time import perf_counter
 
 from starlette.types import (
@@ -50,18 +50,13 @@ class HttpLoggingMiddleware:
                 send_with_logging,
             )
         finally:
-            duration_ms = (
-                perf_counter() - started_at
-            ) * 1000
+            duration_ms = (perf_counter() - started_at) * 1000
 
             method = scope.get("method", "-")
             path = scope.get("path", "-")
 
             logger.info(
-                (
-                    "method=%s path=%s "
-                    "status_code=%s duration_ms=%.2f"
-                ),
+                ("method=%s path=%s status_code=%s duration_ms=%.2f"),
                 method,
                 path,
                 status_code,

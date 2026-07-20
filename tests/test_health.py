@@ -1,4 +1,4 @@
-﻿from collections.abc import Generator
+from collections.abc import Generator
 
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import OperationalError
@@ -52,9 +52,7 @@ def test_root_endpoint() -> None:
     response = client.get("/")
 
     assert response.status_code == 200
-    assert response.json()["message"] == (
-        "AVM Imóveis API em execução"
-    )
+    assert response.json()["message"] == ("AVM Imóveis API em execução")
 
 
 def test_health_returns_503_when_database_is_unavailable() -> None:
@@ -63,9 +61,7 @@ def test_health_returns_503_when_database_is_unavailable() -> None:
             raise OperationalError(
                 statement="SELECT 1",
                 params={},
-                orig=RuntimeError(
-                    "Falha simulada de conexão"
-                ),
+                orig=RuntimeError("Falha simulada de conexão"),
             )
 
     def override_database_session() -> Generator[
@@ -75,9 +71,7 @@ def test_health_returns_503_when_database_is_unavailable() -> None:
     ]:
         yield FailingSession()
 
-    app.dependency_overrides[
-        get_database_session
-    ] = override_database_session
+    app.dependency_overrides[get_database_session] = override_database_session
 
     try:
         health_response = client.get("/health")
@@ -93,14 +87,11 @@ def test_health_returns_503_when_database_is_unavailable() -> None:
     assert health_response.json()["detail"] == {
         "code": "DATABASE_UNAVAILABLE",
         "message": (
-            "A API está em execução, mas o banco "
-            "de dados não está disponível."
+            "A API está em execução, mas o banco de dados não está disponível."
         ),
     }
 
-    assert ready_response.json()["detail"]["code"] == (
-        "DATABASE_UNAVAILABLE"
-    )
+    assert ready_response.json()["detail"]["code"] == ("DATABASE_UNAVAILABLE")
 
     assert live_response.status_code == 200
     assert live_response.json()["status"] == "ok"

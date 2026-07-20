@@ -1,16 +1,12 @@
-﻿import os
+import os
 from pathlib import Path
 
 import pytest
 from sqlalchemy import delete
 
-TEST_DATABASE_FILE = (
-    Path(__file__).resolve().parent / "test_avm.db"
-)
+TEST_DATABASE_FILE = Path(__file__).resolve().parent / "test_avm.db"
 
-os.environ["DATABASE_URL"] = (
-    f"sqlite:///{TEST_DATABASE_FILE.as_posix()}"
-)
+os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DATABASE_FILE.as_posix()}"
 
 from app.domain.city_model import CityModel
 from app.domain.order_model import OrderModel
@@ -94,27 +90,18 @@ Base.metadata.create_all(bind=engine)
 @pytest.fixture(autouse=True)
 def prepare_test_database():
     with SessionLocal() as session:
-        session.execute(
-            delete(OrderStatusHistoryModel)
-        )
+        session.execute(delete(OrderStatusHistoryModel))
         session.execute(delete(OrderModel))
         session.execute(delete(CityModel))
 
-        session.add_all(
-            [
-                CityModel(**city_data)
-                for city_data in TEST_CITIES_DATA
-            ]
-        )
+        session.add_all([CityModel(**city_data) for city_data in TEST_CITIES_DATA])
 
         session.commit()
 
     yield
 
     with SessionLocal() as session:
-        session.execute(
-            delete(OrderStatusHistoryModel)
-        )
+        session.execute(delete(OrderStatusHistoryModel))
         session.execute(delete(OrderModel))
         session.execute(delete(CityModel))
         session.commit()

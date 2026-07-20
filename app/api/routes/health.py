@@ -1,4 +1,4 @@
-﻿from fastapi import (
+from fastapi import (
     APIRouter,
     HTTPException,
     status,
@@ -31,8 +31,7 @@ def verify_database_connection(
             detail={
                 "code": "DATABASE_UNAVAILABLE",
                 "message": (
-                    "A API está em execução, mas o banco "
-                    "de dados não está disponível."
+                    "A API está em execução, mas o banco de dados não está disponível."
                 ),
             },
         ) from error

@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timezone
+from datetime import datetime, timezone
 
 import pytest
 from pydantic import ValidationError
@@ -12,9 +12,7 @@ from app.schemas.order_status_history import (
 def valid_history_payload() -> dict:
     return {
         "id": 1,
-        "internal_order_id": (
-            "00000000-0000-0000-0000-000000000001"
-        ),
+        "internal_order_id": ("00000000-0000-0000-0000-000000000001"),
         "previous_status": "RECEIVED",
         "new_status": "VALIDATING_INPUT",
         "changed_at": datetime.now(timezone.utc),
@@ -22,15 +20,11 @@ def valid_history_payload() -> dict:
 
 
 def test_accepts_valid_status_history() -> None:
-    history = OrderStatusHistoryResponse.model_validate(
-        valid_history_payload()
-    )
+    history = OrderStatusHistoryResponse.model_validate(valid_history_payload())
 
     assert history.id == 1
     assert history.previous_status == OrderStatus.RECEIVED
-    assert history.new_status == (
-        OrderStatus.VALIDATING_INPUT
-    )
+    assert history.new_status == (OrderStatus.VALIDATING_INPUT)
     assert history.changed_at is not None
 
 

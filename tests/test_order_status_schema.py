@@ -1,4 +1,4 @@
-﻿import pytest
+import pytest
 from pydantic import ValidationError
 
 from app.schemas.order import (
@@ -14,9 +14,7 @@ def test_accepts_valid_order_status_update() -> None:
         }
     )
 
-    assert status_update.status == (
-        OrderStatus.VALIDATING_INPUT
-    )
+    assert status_update.status == (OrderStatus.VALIDATING_INPUT)
 
 
 def test_rejects_invalid_order_status_update() -> None:

@@ -1,8 +1,9 @@
-﻿from datetime import datetime, timezone
+from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from fastapi import (
-    APIRouter,    HTTPException,
+    APIRouter,
+    HTTPException,
     Query,
     status,
 )
@@ -89,13 +90,10 @@ def create_order(
             detail={
                 "code": "DUPLICATE_EXTERNAL_ORDER_ID",
                 "message": (
-                    "Já existe uma Ordem de Serviço "
-                    "com este external_order_id."
+                    "Já existe uma Ordem de Serviço com este external_order_id."
                 ),
                 "external_order_id": order.external_order_id,
-                "internal_order_id": (
-                    existing_order.internal_order_id
-                ),
+                "internal_order_id": (existing_order.internal_order_id),
             },
         )
 
@@ -179,9 +177,7 @@ def update_order_status(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
                 "code": "ORDER_NOT_FOUND",
-                "message": (
-                    "Ordem de Serviço não encontrada."
-                ),
+                "message": ("Ordem de Serviço não encontrada."),
                 "internal_order_id": order_id,
             },
         )
@@ -208,9 +204,7 @@ def get_order_by_external_identifier(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
                 "code": "ORDER_NOT_FOUND",
-                "message": (
-                    "Ordem de Serviço não encontrada."
-                ),
+                "message": ("Ordem de Serviço não encontrada."),
                 "external_order_id": external_order_id,
             },
         )
@@ -237,12 +231,9 @@ def get_order(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
                 "code": "ORDER_NOT_FOUND",
-                "message": (
-                    "Ordem de Serviço não encontrada."
-                ),
+                "message": ("Ordem de Serviço não encontrada."),
                 "internal_order_id": str(internal_order_id),
             },
         )
 
     return order
-

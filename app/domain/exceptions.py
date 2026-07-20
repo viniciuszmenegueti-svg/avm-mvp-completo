@@ -1,4 +1,4 @@
-﻿class UnsupportedCityError(Exception):
+class UnsupportedCityError(Exception):
     def __init__(
         self,
         city_ibge_code: str,
@@ -6,8 +6,7 @@
         self.city_ibge_code = city_ibge_code
 
         super().__init__(
-            "A cidade informada não está habilitada "
-            "para processamento de AVM."
+            "A cidade informada não está habilitada para processamento de AVM."
         )
 
 
@@ -23,8 +22,7 @@ class CityDataMismatchError(Exception):
         self.expected_state = expected_state
 
         super().__init__(
-            "O nome da cidade ou a UF não corresponde "
-            "ao código IBGE informado."
+            "O nome da cidade ou a UF não corresponde ao código IBGE informado."
         )
 
 
@@ -38,6 +36,5 @@ class InvalidOrderStatusTransitionError(Exception):
         self.new_status = new_status
 
         super().__init__(
-            f"A transição de {current_status} "
-            f"para {new_status} não é permitida."
+            f"A transição de {current_status} para {new_status} não é permitida."
         )

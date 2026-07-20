@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 
 from fastapi import APIRouter
 from fastapi.testclient import TestClient
@@ -11,9 +11,7 @@ error_test_router = APIRouter()
 
 @error_test_router.get("/test-unexpected-error")
 def raise_unexpected_error() -> None:
-    raise RuntimeError(
-        "Erro interno utilizado somente no teste"
-    )
+    raise RuntimeError("Erro interno utilizado somente no teste")
 
 
 app.include_router(error_test_router)
@@ -40,9 +38,7 @@ def test_returns_standard_internal_error_response() -> None:
     assert response.json() == {
         "detail": {
             "code": "INTERNAL_SERVER_ERROR",
-            "message": (
-                "Ocorreu um erro interno inesperado."
-            ),
+            "message": ("Ocorreu um erro interno inesperado."),
             "request_id": request_id,
         }
     }
@@ -64,19 +60,12 @@ def test_logs_unexpected_error(
 
     assert response.status_code == 500
 
-    records = [
-        record
-        for record in caplog.records
-        if record.name == "app.errors"
-    ]
+    records = [record for record in caplog.records if record.name == "app.errors"]
 
     assert any(
         "unexpected_error" in record.getMessage()
         and "method=GET" in record.getMessage()
-        and "path=/test-unexpected-error"
-        in record.getMessage()
-        and "error_type=RuntimeError"
-        in record.getMessage()
+        and "path=/test-unexpected-error" in record.getMessage()
+        and "error_type=RuntimeError" in record.getMessage()
         for record in records
     )
-

@@ -1,4 +1,4 @@
-﻿from app.schemas.order import OrderResponse
+from app.schemas.order import OrderResponse
 
 orders_storage: dict[str, OrderResponse] = {}
 

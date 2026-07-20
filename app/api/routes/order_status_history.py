@@ -1,4 +1,4 @@
-﻿from uuid import UUID
+from uuid import UUID
 
 from fastapi import (
     APIRouter,
@@ -47,9 +47,7 @@ def get_order_status_history(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
                 "code": "ORDER_NOT_FOUND",
-                "message": (
-                    "Ordem de Serviço não encontrada."
-                ),
+                "message": ("Ordem de Serviço não encontrada."),
                 "internal_order_id": order_id,
             },
         )
@@ -59,7 +57,4 @@ def get_order_status_history(
         internal_order_id=order_id,
     )
 
-    return [
-        OrderStatusHistoryResponse.model_validate(item)
-        for item in history
-    ]
+    return [OrderStatusHistoryResponse.model_validate(item) for item in history]

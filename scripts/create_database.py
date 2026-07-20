@@ -1,4 +1,4 @@
-﻿from app.infrastructure.database import Base, engine
+from app.infrastructure.database import Base, engine
 
 
 def create_database_tables() -> None:

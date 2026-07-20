@@ -1,4 +1,4 @@
-﻿from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session
 
 from app.domain.exceptions import (
     CityDataMismatchError,
@@ -32,10 +32,7 @@ def validate_order_city(
     informed_state = property_data.state.strip().upper()
     registered_state = city.state.strip().upper()
 
-    if (
-        informed_city != registered_city
-        or informed_state != registered_state
-    ):
+    if informed_city != registered_city or informed_state != registered_state:
         raise CityDataMismatchError(
             city_ibge_code=property_data.city_ibge_code,
             expected_city=city.name,

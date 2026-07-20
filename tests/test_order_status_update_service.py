@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timezone
+from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
@@ -53,9 +53,7 @@ def create_test_order(
 ) -> str:
     internal_order_id = str(uuid4())
 
-    order = OrderCreate.model_validate(
-        order_payload(external_order_id)
-    )
+    order = OrderCreate.model_validate(order_payload(external_order_id))
 
     with SessionLocal() as session:
         create_order(
@@ -69,9 +67,7 @@ def create_test_order(
 
 
 def test_updates_status_and_creates_history() -> None:
-    internal_order_id = create_test_order(
-        "STATUS-SERVICE-001"
-    )
+    internal_order_id = create_test_order("STATUS-SERVICE-001")
 
     with SessionLocal() as session:
         updated_order = update_order_status_with_history(
@@ -81,9 +77,7 @@ def test_updates_status_and_creates_history() -> None:
         )
 
     assert updated_order is not None
-    assert updated_order.status == (
-        OrderStatus.VALIDATING_INPUT
-    )
+    assert updated_order.status == (OrderStatus.VALIDATING_INPUT)
 
     with SessionLocal() as session:
         stored_order = get_order_by_internal_id(
@@ -97,9 +91,7 @@ def test_updates_status_and_creates_history() -> None:
         )
 
     assert stored_order is not None
-    assert stored_order.status == (
-        OrderStatus.VALIDATING_INPUT
-    )
+    assert stored_order.status == (OrderStatus.VALIDATING_INPUT)
 
     assert len(history) == 1
     assert history[0].previous_status == "RECEIVED"
@@ -110,9 +102,7 @@ def test_returns_none_for_unknown_order() -> None:
     with SessionLocal() as session:
         updated_order = update_order_status_with_history(
             session=session,
-            internal_order_id=(
-                "00000000-0000-0000-0000-000000000000"
-            ),
+            internal_order_id=("00000000-0000-0000-0000-000000000000"),
             new_status=OrderStatus.VALIDATING_INPUT,
         )
 
@@ -120,14 +110,10 @@ def test_returns_none_for_unknown_order() -> None:
 
 
 def test_rejects_invalid_transition_without_history() -> None:
-    internal_order_id = create_test_order(
-        "STATUS-SERVICE-002"
-    )
+    internal_order_id = create_test_order("STATUS-SERVICE-002")
 
     with SessionLocal() as session:
-        with pytest.raises(
-            InvalidOrderStatusTransitionError
-        ):
+        with pytest.raises(InvalidOrderStatusTransitionError):
             update_order_status_with_history(
                 session=session,
                 internal_order_id=internal_order_id,

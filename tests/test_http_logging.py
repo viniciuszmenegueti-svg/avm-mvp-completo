@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 
 from fastapi.testclient import TestClient
 
@@ -25,9 +25,7 @@ def test_logs_successful_http_request(
     assert response.status_code == 200
 
     messages = [
-        record.getMessage()
-        for record in caplog.records
-        if record.name == "app.http"
+        record.getMessage() for record in caplog.records if record.name == "app.http"
     ]
 
     assert any(
@@ -46,16 +44,12 @@ def test_logs_not_found_response(
         logging.INFO,
         logger="app.http",
     ):
-        response = client.get(
-            "/rota-inexistente"
-        )
+        response = client.get("/rota-inexistente")
 
     assert response.status_code == 404
 
     messages = [
-        record.getMessage()
-        for record in caplog.records
-        if record.name == "app.http"
+        record.getMessage() for record in caplog.records if record.name == "app.http"
     ]
 
     assert any(

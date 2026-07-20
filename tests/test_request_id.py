@@ -1,4 +1,4 @@
-﻿from uuid import UUID
+from uuid import UUID
 
 from fastapi.testclient import TestClient
 
@@ -35,9 +35,7 @@ def test_preserves_request_id_sent_by_client() -> None:
 
 
 def test_request_id_is_added_to_error_response() -> None:
-    response = client.get(
-        "/rota-inexistente"
-    )
+    response = client.get("/rota-inexistente")
 
     assert response.status_code == 404
     assert response.headers["X-Request-ID"]
