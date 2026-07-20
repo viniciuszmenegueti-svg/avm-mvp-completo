@@ -1,8 +1,17 @@
-﻿from uuid import UUID
+﻿from typing import Annotated
+from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+)
+from sqlalchemy.orm import Session
 
-from app.infrastructure.database import SessionLocal
+from app.infrastructure.dependencies import (
+    get_database_session,
+)
 from app.repositories.order_status_history_sqlalchemy import (
     list_order_status_history,
 )
@@ -19,6 +28,11 @@ router = APIRouter(
     tags=["Histórico de Status"],
 )
 
+DatabaseSession = Annotated[
+    Session,
+    Depends(get_database_session),
+]
+
 
 @router.get(
     "/{internal_order_id}/status-history",
@@ -27,31 +41,33 @@ router = APIRouter(
 )
 def get_order_status_history(
     internal_order_id: UUID,
+    session: DatabaseSession,
 ) -> list[OrderStatusHistoryResponse]:
-    with SessionLocal() as session:
-        existing_order = get_order_by_internal_id(
-            session=session,
-            internal_order_id=str(internal_order_id),
+    order_id = str(internal_order_id)
+
+    existing_order = get_order_by_internal_id(
+        session=session,
+        internal_order_id=order_id,
+    )
+
+    if existing_order is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "ORDER_NOT_FOUND",
+                "message": (
+                    "Ordem de Serviço não encontrada."
+                ),
+                "internal_order_id": order_id,
+            },
         )
 
-        if existing_order is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "code": "ORDER_NOT_FOUND",
-                    "message": (
-                        "Ordem de Serviço não encontrada."
-                    ),
-                    "internal_order_id": str(internal_order_id),
-                },
-            )
+    history = list_order_status_history(
+        session=session,
+        internal_order_id=order_id,
+    )
 
-        history = list_order_status_history(
-            session=session,
-            internal_order_id=str(internal_order_id),
-        )
-
-        return [
-            OrderStatusHistoryResponse.model_validate(item)
-            for item in history
-        ]
+    return [
+        OrderStatusHistoryResponse.model_validate(item)
+        for item in history
+    ]
