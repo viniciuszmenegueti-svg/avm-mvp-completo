@@ -1,15 +1,11 @@
 ﻿from datetime import datetime, timezone
-from typing import Annotated
 from uuid import UUID, uuid4
 
 from fastapi import (
-    APIRouter,
-    Depends,
-    HTTPException,
+    APIRouter,    HTTPException,
     Query,
     status,
 )
-from sqlalchemy.orm import Session
 
 from app.domain.exceptions import (
     CityDataMismatchError,
@@ -17,7 +13,7 @@ from app.domain.exceptions import (
     UnsupportedCityError,
 )
 from app.infrastructure.dependencies import (
-    get_database_session,
+    DatabaseSession,
 )
 from app.repositories.orders_sqlalchemy import (
     create_order as create_order_in_database,
@@ -44,11 +40,6 @@ router = APIRouter(
     prefix="/orders",
     tags=["Ordens de Serviço"],
 )
-
-DatabaseSession = Annotated[
-    Session,
-    Depends(get_database_session),
-]
 
 
 @router.post(
@@ -254,3 +245,4 @@ def get_order(
         )
 
     return order
+

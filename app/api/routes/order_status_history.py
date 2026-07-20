@@ -1,16 +1,13 @@
-﻿from typing import Annotated
-from uuid import UUID
+﻿from uuid import UUID
 
 from fastapi import (
     APIRouter,
-    Depends,
     HTTPException,
     status,
 )
-from sqlalchemy.orm import Session
 
 from app.infrastructure.dependencies import (
-    get_database_session,
+    DatabaseSession,
 )
 from app.repositories.order_status_history_sqlalchemy import (
     list_order_status_history,
@@ -27,11 +24,6 @@ router = APIRouter(
     prefix="/orders",
     tags=["Histórico de Status"],
 )
-
-DatabaseSession = Annotated[
-    Session,
-    Depends(get_database_session),
-]
 
 
 @router.get(

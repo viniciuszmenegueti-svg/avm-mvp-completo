@@ -1,10 +1,7 @@
-﻿from typing import Annotated
-
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+﻿from fastapi import APIRouter
 
 from app.infrastructure.dependencies import (
-    get_database_session,
+    DatabaseSession,
 )
 from app.repositories.cities_sqlalchemy import (
     list_active_cities,
@@ -16,11 +13,6 @@ router = APIRouter(
     prefix="/cities",
     tags=["Cidades"],
 )
-
-DatabaseSession = Annotated[
-    Session,
-    Depends(get_database_session),
-]
 
 
 @router.get(

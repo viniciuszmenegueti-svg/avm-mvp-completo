@@ -1,8 +1,5 @@
-﻿from typing import Annotated
-
-from fastapi import (
+﻿from fastapi import (
     APIRouter,
-    Depends,
     HTTPException,
     status,
 )
@@ -12,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import APP_VERSION
 from app.infrastructure.dependencies import (
-    get_database_session,
+    DatabaseSession,
 )
 
 
@@ -20,11 +17,6 @@ router = APIRouter(
     prefix="/health",
     tags=["Sistema"],
 )
-
-DatabaseSession = Annotated[
-    Session,
-    Depends(get_database_session),
-]
 
 
 def verify_database_connection(
