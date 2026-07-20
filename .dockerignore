@@ -1,0 +1,69 @@
+﻿# Git
+.git/
+.gitignore
+
+# Ambiente virtual
+.venv/
+venv/
+
+# Cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Variáveis de ambiente e segredos
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Bancos e dados locais
+*.db
+*.sqlite
+*.sqlite3
+data/database/
+data/raw/
+data/processed/
+data/uploads/
+storage/
+
+# Testes e cobertura
+tests/
+.coverage
+.coverage.*
+htmlcov/
+
+# Documentos e arquivos confidenciais
+*.pdf
+*.doc
+*.docx
+*.xls
+*.xlsx
+
+# Logs
+*.log
+logs/
+
+# Editores e sistema operacional
+.vscode/
+.idea/
+*.code-workspace
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Build e distribuição
+build/
+dist/
+*.egg-info/
+
+# Arquivos temporários
+*.tmp
+*.temp
+~$*

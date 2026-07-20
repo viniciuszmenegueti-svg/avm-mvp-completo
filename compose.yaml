@@ -2,28 +2,39 @@
   postgres:
     image: postgres:16.4
     container_name: avm-postgres
-    restart: unless-stopped
-
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: avm
+      POSTGRES_USER: avm_app
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
-
+      - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-
+      - avm-postgres-data:/var/lib/postgresql/data
     healthcheck:
       test:
-        - CMD-SHELL
-        - pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}
+        [
+          "CMD-SHELL",
+          "pg_isready -U avm_app -d avm"
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
-      start_period: 10s
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: avm-api:local
+    container_name: avm-api
+    environment:
+      DATABASE_URL: postgresql+psycopg://avm_app:${POSTGRES_PASSWORD}@postgres:5432/avm
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
-  postgres_data:
-    name: avm-postgres-data
+  avm-postgres-data:
