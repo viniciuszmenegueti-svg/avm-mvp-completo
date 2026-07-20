@@ -1,5 +1,4 @@
-﻿from app.domain.order_model import OrderModel
-from app.infrastructure.database import Base, engine
+﻿from app.infrastructure.database import Base, engine
 
 
 def create_database_tables() -> None:
