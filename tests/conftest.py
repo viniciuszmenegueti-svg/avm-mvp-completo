@@ -12,7 +12,6 @@ os.environ["DATABASE_URL"] = (
     f"sqlite:///{TEST_DATABASE_FILE.as_posix()}"
 )
 
-from app.domain import models
 from app.domain.city_model import CityModel
 from app.domain.order_model import OrderModel
 from app.domain.order_status_history_model import (
