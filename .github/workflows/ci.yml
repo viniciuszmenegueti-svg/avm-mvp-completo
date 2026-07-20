@@ -34,8 +34,12 @@ jobs:
       - name: Verificar formatacao do codigo
         run: ruff format --check .
 
-      - name: Executar testes
-        run: python -m pytest -q
+      - name: Executar testes com cobertura
+        run: |
+          python -m pytest \
+            --cov=app \
+            --cov-report=term-missing \
+            --cov-fail-under=95
 
       - name: Construir imagem Docker
         run: docker build -t avm-api:ci .
