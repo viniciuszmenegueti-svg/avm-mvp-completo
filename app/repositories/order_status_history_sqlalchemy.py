@@ -12,6 +12,7 @@ def create_order_status_history(
     internal_order_id: str,
     previous_status: OrderStatus,
     new_status: OrderStatus,
+    commit: bool = True,
 ) -> OrderStatusHistoryModel:
     history = OrderStatusHistoryModel(
         internal_order_id=internal_order_id,
@@ -20,8 +21,12 @@ def create_order_status_history(
     )
 
     session.add(history)
-    session.commit()
-    session.refresh(history)
+
+    if commit:
+        session.commit()
+        session.refresh(history)
+    else:
+        session.flush()
 
     return history
 

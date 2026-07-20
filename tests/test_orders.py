@@ -1,4 +1,6 @@
-﻿from fastapi.testclient import TestClient
+﻿import pytest
+
+from fastapi.testclient import TestClient
 
 from app.main import app
 from app.repositories.orders_memory import (
@@ -553,3 +555,47 @@ def test_get_status_history_rejects_invalid_order_id() -> None:
     )
 
     assert response.status_code == 422
+
+
+def test_status_update_rolls_back_when_history_fails(
+    monkeypatch,
+) -> None:
+    from app.api.routes import orders as orders_route
+
+    create_response = client.post(
+        "/orders",
+        json=apartment_payload("STATUS-ROLLBACK-001"),
+    )
+
+    assert create_response.status_code == 201
+
+    internal_order_id = create_response.json()[
+        "internal_order_id"
+    ]
+
+    def fail_history_creation(*args, **kwargs):
+        raise RuntimeError(
+            "Falha simulada ao gravar histórico"
+        )
+
+    monkeypatch.setattr(
+        orders_route,
+        "create_order_status_history",
+        fail_history_creation,
+    )
+
+    with pytest.raises(RuntimeError):
+        client.patch(
+            f"/orders/{internal_order_id}/status",
+            json={
+                "status": "VALIDATING_INPUT",
+            },
+        )
+
+    get_response = client.get(
+        f"/orders/{internal_order_id}"
+    )
+
+    assert get_response.status_code == 200
+    assert get_response.json()["status"] == "RECEIVED"
+

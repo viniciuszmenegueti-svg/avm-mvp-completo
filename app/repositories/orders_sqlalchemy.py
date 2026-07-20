@@ -124,6 +124,7 @@ def update_order_status(
     session: Session,
     internal_order_id: str,
     new_status: OrderStatus,
+    commit: bool = True,
 ) -> OrderResponse | None:
     database_order = session.get(
         OrderModel,
@@ -135,7 +136,11 @@ def update_order_status(
 
     database_order.status = new_status.value
 
-    session.commit()
-    session.refresh(database_order)
+    if commit:
+        session.commit()
+        session.refresh(database_order)
+    else:
+        session.flush()
 
     return order_model_to_response(database_order)
+

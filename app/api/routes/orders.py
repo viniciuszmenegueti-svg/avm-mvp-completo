@@ -80,8 +80,8 @@ def create_order(order: OrderCreate) -> OrderResponse:
             ) from error
 
         existing_order = get_order_by_external_id(
-            session,
-            order.external_order_id,
+            session=session,
+            external_order_id=order.external_order_id,
         )
 
         if existing_order is not None:
@@ -100,14 +100,11 @@ def create_order(order: OrderCreate) -> OrderResponse:
                 },
             )
 
-        internal_order_id = str(uuid4())
-        received_at = datetime.now(timezone.utc)
-
         return create_order_in_database(
             session=session,
             order=order,
-            internal_order_id=internal_order_id,
-            received_at=received_at,
+            internal_order_id=str(uuid4()),
+            received_at=datetime.now(timezone.utc),
         )
 
 
@@ -158,10 +155,12 @@ def update_order_status(
     internal_order_id: UUID,
     status_update: OrderStatusUpdate,
 ) -> OrderResponse:
+    order_id = str(internal_order_id)
+
     with SessionLocal() as session:
         existing_order = get_order_by_internal_id(
             session=session,
-            internal_order_id=str(internal_order_id),
+            internal_order_id=order_id,
         )
 
         if existing_order is None:
@@ -172,7 +171,7 @@ def update_order_status(
                     "message": (
                         "Ordem de Serviço não encontrada."
                     ),
-                    "internal_order_id": str(internal_order_id),
+                    "internal_order_id": order_id,
                 },
             )
 
@@ -192,31 +191,45 @@ def update_order_status(
                 },
             ) from error
 
-        updated_order = update_order_status_in_database(
-            session=session,
-            internal_order_id=str(internal_order_id),
-            new_status=status_update.status,
-        )
-
-        create_order_status_history(
-            session=session,
-            internal_order_id=str(internal_order_id),
-            previous_status=existing_order.status,
-            new_status=status_update.status,
-        )
-        if updated_order is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "code": "ORDER_NOT_FOUND",
-                    "message": (
-                        "Ordem de Serviço não encontrada."
-                    ),
-                    "internal_order_id": str(internal_order_id),
-                },
+        try:
+            updated_order = update_order_status_in_database(
+                session=session,
+                internal_order_id=order_id,
+                new_status=status_update.status,
+                commit=False,
             )
 
-        return updated_order
+            if updated_order is None:
+                session.rollback()
+
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail={
+                        "code": "ORDER_NOT_FOUND",
+                        "message": (
+                            "Ordem de Serviço não encontrada."
+                        ),
+                        "internal_order_id": order_id,
+                    },
+                )
+
+            create_order_status_history(
+                session=session,
+                internal_order_id=order_id,
+                previous_status=existing_order.status,
+                new_status=status_update.status,
+                commit=False,
+            )
+
+            session.commit()
+
+            return updated_order
+
+        except HTTPException:
+            raise
+        except Exception:
+            session.rollback()
+            raise
 
 
 @router.get(
@@ -227,8 +240,8 @@ def update_order_status(
 def get_order(internal_order_id: UUID) -> OrderResponse:
     with SessionLocal() as session:
         order = get_order_by_internal_id(
-            session,
-            str(internal_order_id),
+            session=session,
+            internal_order_id=str(internal_order_id),
         )
 
         if order is None:
@@ -244,5 +257,3 @@ def get_order(internal_order_id: UUID) -> OrderResponse:
             )
 
         return order
-
-
