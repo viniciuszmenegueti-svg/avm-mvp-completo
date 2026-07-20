@@ -1,4 +1,4 @@
-﻿from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -46,11 +46,7 @@ def test_database_session_rolls_back_and_closes_after_error() -> None:
             RuntimeError,
             match="Falha simulada durante a requisição",
         ):
-            dependency.throw(
-                RuntimeError(
-                    "Falha simulada durante a requisição"
-                )
-            )
+            dependency.throw(RuntimeError("Falha simulada durante a requisição"))
 
         mocked_session.rollback.assert_called_once()
         mocked_session.close.assert_called_once()

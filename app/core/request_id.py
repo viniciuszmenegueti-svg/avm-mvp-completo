@@ -1,4 +1,4 @@
-﻿from contextvars import ContextVar, Token
+from contextvars import ContextVar, Token
 from uuid import uuid4
 
 from starlette.datastructures import MutableHeaders
@@ -38,13 +38,9 @@ class RequestIdMiddleware:
             await self.app(scope, receive, send)
             return
 
-        request_headers = dict(
-            scope.get("headers", [])
-        )
+        request_headers = dict(scope.get("headers", []))
 
-        provided_request_id = request_headers.get(
-            b"x-request-id"
-        )
+        provided_request_id = request_headers.get(b"x-request-id")
 
         if provided_request_id:
             request_id = provided_request_id.decode(
@@ -57,20 +53,14 @@ class RequestIdMiddleware:
         state = scope.setdefault("state", {})
         state["request_id"] = request_id
 
-        token: Token[str] = request_id_context.set(
-            request_id
-        )
+        token: Token[str] = request_id_context.set(request_id)
 
         async def send_with_request_id(
             message: Message,
         ) -> None:
             if message["type"] == "http.response.start":
-                response_headers = MutableHeaders(
-                    scope=message
-                )
-                response_headers["X-Request-ID"] = (
-                    request_id
-                )
+                response_headers = MutableHeaders(scope=message)
+                response_headers["X-Request-ID"] = request_id
 
             await send(message)
 

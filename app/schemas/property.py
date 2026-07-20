@@ -1,4 +1,4 @@
-﻿from enum import StrEnum
+from enum import StrEnum
 from typing import Self
 
 from pydantic import BaseModel, Field, model_validator
@@ -11,9 +11,7 @@ class PropertyType(StrEnum):
 
 
 class PropertyInput(BaseModel):
-    property_type: PropertyType = Field(
-        description="Tipologia do imóvel"
-    )
+    property_type: PropertyType = Field(description="Tipologia do imóvel")
     state: str = Field(
         min_length=2,
         max_length=2,
@@ -107,40 +105,26 @@ class PropertyInput(BaseModel):
     def validate_property_areas(self) -> Self:
         if self.property_type == PropertyType.APARTMENT:
             if self.private_area_m2 is None:
-                raise ValueError(
-                    "Apartamento deve possuir private_area_m2."
-                )
+                raise ValueError("Apartamento deve possuir private_area_m2.")
 
             if self.land_area_m2 is not None:
-                raise ValueError(
-                    "Apartamento não deve possuir land_area_m2."
-                )
+                raise ValueError("Apartamento não deve possuir land_area_m2.")
 
         if self.property_type == PropertyType.HOUSE:
             if self.built_area_m2 is None:
-                raise ValueError(
-                    "Casa deve possuir built_area_m2."
-                )
+                raise ValueError("Casa deve possuir built_area_m2.")
 
             if self.land_area_m2 is None:
-                raise ValueError(
-                    "Casa deve possuir land_area_m2."
-                )
+                raise ValueError("Casa deve possuir land_area_m2.")
 
         if self.property_type == PropertyType.LAND:
             if self.land_area_m2 is None:
-                raise ValueError(
-                    "Terreno deve possuir land_area_m2."
-                )
+                raise ValueError("Terreno deve possuir land_area_m2.")
 
             if self.private_area_m2 is not None:
-                raise ValueError(
-                    "Terreno não deve possuir private_area_m2."
-                )
+                raise ValueError("Terreno não deve possuir private_area_m2.")
 
             if self.built_area_m2 is not None:
-                raise ValueError(
-                    "Terreno não deve possuir built_area_m2."
-                )
+                raise ValueError("Terreno não deve possuir built_area_m2.")
 
         return self

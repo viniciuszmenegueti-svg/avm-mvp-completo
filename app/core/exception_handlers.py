@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 from typing import Any
 
 from fastapi import Request
@@ -30,9 +30,7 @@ def serialize_validation_errors(
         serialized_errors.append(
             {
                 "type": validation_error.get("type"),
-                "location": list(
-                    validation_error.get("loc", ())
-                ),
+                "location": list(validation_error.get("loc", ())),
                 "message": validation_error.get("msg"),
                 "input": validation_error.get("input"),
             }
@@ -48,10 +46,7 @@ async def validation_error_handler(
     request_id = get_request_id_from_request(request)
 
     logger.warning(
-        (
-            "validation_error method=%s "
-            "path=%s error_count=%s"
-        ),
+        ("validation_error method=%s path=%s error_count=%s"),
         request.method,
         request.url.path,
         len(error.errors()),
@@ -65,13 +60,9 @@ async def validation_error_handler(
         content={
             "detail": {
                 "code": "VALIDATION_ERROR",
-                "message": (
-                    "Os dados enviados são inválidos."
-                ),
+                "message": ("Os dados enviados são inválidos."),
                 "request_id": request_id,
-                "errors": serialize_validation_errors(
-                    error
-                ),
+                "errors": serialize_validation_errors(error),
             }
         },
     )
@@ -87,10 +78,7 @@ async def unexpected_error_handler(
 
     try:
         logger.exception(
-            (
-                "unexpected_error method=%s "
-                "path=%s error_type=%s"
-            ),
+            ("unexpected_error method=%s path=%s error_type=%s"),
             request.method,
             request.url.path,
             type(error).__name__,
@@ -107,9 +95,7 @@ async def unexpected_error_handler(
         content={
             "detail": {
                 "code": "INTERNAL_SERVER_ERROR",
-                "message": (
-                    "Ocorreu um erro interno inesperado."
-                ),
+                "message": ("Ocorreu um erro interno inesperado."),
                 "request_id": request_id,
             }
         },

@@ -1,4 +1,4 @@
-﻿from app.domain.exceptions import (
+from app.domain.exceptions import (
     InvalidOrderStatusTransitionError,
 )
 from app.schemas.order import OrderStatus
@@ -24,9 +24,7 @@ def can_transition_order_status(
     current_status: OrderStatus,
     new_status: OrderStatus,
 ) -> bool:
-    return new_status in ALLOWED_STATUS_TRANSITIONS[
-        current_status
-    ]
+    return new_status in ALLOWED_STATUS_TRANSITIONS[current_status]
 
 
 def validate_order_status_transition(

@@ -1,4 +1,4 @@
-﻿import os
+import os
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -21,9 +21,7 @@ DATABASE_DIRECTORY.mkdir(
 
 DATABASE_FILE = DATABASE_DIRECTORY / "avm.db"
 
-DEFAULT_DATABASE_URL = (
-    f"sqlite:///{DATABASE_FILE.as_posix()}"
-)
+DEFAULT_DATABASE_URL = f"sqlite:///{DATABASE_FILE.as_posix()}"
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
@@ -37,9 +35,7 @@ if DATABASE_URL.startswith("sqlite"):
         "check_same_thread": False,
     }
 
-elif DATABASE_URL.startswith(
-    ("postgresql://", "postgresql+psycopg://")
-):
+elif DATABASE_URL.startswith(("postgresql://", "postgresql+psycopg://")):
     connect_args = {
         "connect_timeout": 3,
     }

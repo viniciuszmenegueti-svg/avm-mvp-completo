@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timezone
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from app.infrastructure.database import SessionLocal
@@ -41,9 +41,7 @@ def order_payload(
 def test_creates_order_status_history() -> None:
     internal_order_id = str(uuid4())
 
-    order = OrderCreate.model_validate(
-        order_payload("HISTORY-REPOSITORY-001")
-    )
+    order = OrderCreate.model_validate(order_payload("HISTORY-REPOSITORY-001"))
 
     with SessionLocal() as session:
         create_order(
@@ -70,9 +68,7 @@ def test_creates_order_status_history() -> None:
 def test_lists_history_in_creation_order() -> None:
     internal_order_id = str(uuid4())
 
-    order = OrderCreate.model_validate(
-        order_payload("HISTORY-REPOSITORY-002")
-    )
+    order = OrderCreate.model_validate(order_payload("HISTORY-REPOSITORY-002"))
 
     with SessionLocal() as session:
         create_order(
@@ -114,9 +110,7 @@ def test_returns_empty_history_for_unknown_order() -> None:
     with SessionLocal() as session:
         history = list_order_status_history(
             session=session,
-            internal_order_id=(
-                "00000000-0000-0000-0000-000000000000"
-            ),
+            internal_order_id=("00000000-0000-0000-0000-000000000000"),
         )
 
     assert history == []

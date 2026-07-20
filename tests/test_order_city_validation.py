@@ -1,4 +1,4 @@
-﻿import pytest
+import pytest
 
 from app.domain.exceptions import (
     CityDataMismatchError,
@@ -64,9 +64,7 @@ def test_rejects_unsupported_city() -> None:
     )
 
     with SessionLocal() as session:
-        with pytest.raises(
-            UnsupportedCityError
-        ) as error:
+        with pytest.raises(UnsupportedCityError) as error:
             validate_order_city(
                 session=session,
                 order=order,
@@ -102,9 +100,7 @@ def test_rejects_city_name_that_does_not_match_ibge_code() -> None:
     )
 
     with SessionLocal() as session:
-        with pytest.raises(
-            CityDataMismatchError
-        ) as error:
+        with pytest.raises(CityDataMismatchError) as error:
             validate_order_city(
                 session=session,
                 order=order,

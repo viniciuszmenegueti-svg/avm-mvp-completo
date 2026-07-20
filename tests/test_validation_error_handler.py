@@ -1,4 +1,4 @@
-﻿from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient
 
 from app.main import app
 
@@ -22,9 +22,7 @@ def test_returns_standard_validation_error() -> None:
     detail = response.json()["detail"]
 
     assert detail["code"] == "VALIDATION_ERROR"
-    assert detail["message"] == (
-        "Os dados enviados são inválidos."
-    )
+    assert detail["message"] == ("Os dados enviados são inválidos.")
     assert detail["request_id"] == request_id
     assert len(detail["errors"]) >= 1
 
@@ -65,9 +63,6 @@ def test_validation_error_for_missing_required_field() -> None:
 
     assert detail["code"] == "VALIDATION_ERROR"
 
-    locations = [
-        error["location"]
-        for error in detail["errors"]
-    ]
+    locations = [error["location"] for error in detail["errors"]]
 
     assert ["body", "property"] in locations

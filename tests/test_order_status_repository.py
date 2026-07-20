@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timezone
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from app.infrastructure.database import SessionLocal
@@ -41,9 +41,7 @@ def order_payload(
 def test_updates_order_status() -> None:
     internal_order_id = str(uuid4())
 
-    order = OrderCreate.model_validate(
-        order_payload("STATUS-REPOSITORY-001")
-    )
+    order = OrderCreate.model_validate(order_payload("STATUS-REPOSITORY-001"))
 
     with SessionLocal() as session:
         create_order(
@@ -60,9 +58,7 @@ def test_updates_order_status() -> None:
         )
 
     assert updated_order is not None
-    assert updated_order.status == (
-        OrderStatus.VALIDATING_INPUT
-    )
+    assert updated_order.status == (OrderStatus.VALIDATING_INPUT)
 
     with SessionLocal() as session:
         stored_order = get_order_by_internal_id(
@@ -71,18 +67,14 @@ def test_updates_order_status() -> None:
         )
 
     assert stored_order is not None
-    assert stored_order.status == (
-        OrderStatus.VALIDATING_INPUT
-    )
+    assert stored_order.status == (OrderStatus.VALIDATING_INPUT)
 
 
 def test_returns_none_when_updating_unknown_order() -> None:
     with SessionLocal() as session:
         updated_order = update_order_status(
             session=session,
-            internal_order_id=(
-                "00000000-0000-0000-0000-000000000000"
-            ),
+            internal_order_id=("00000000-0000-0000-0000-000000000000"),
             new_status=OrderStatus.VALIDATING_INPUT,
         )
 

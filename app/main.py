@@ -1,4 +1,4 @@
-﻿from fastapi import FastAPI
+from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 
 from app.api.routes.cities import router as cities_router
@@ -66,11 +66,3 @@ app.include_router(health_router)
 app.include_router(orders_router)
 app.include_router(order_status_history_router)
 app.include_router(cities_router)
-
-
-
-
-
-
-
-

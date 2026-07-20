@@ -1,4 +1,4 @@
-﻿from sqlalchemy import select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.domain.order_status_history_model import (
@@ -37,16 +37,11 @@ def list_order_status_history(
 ) -> list[OrderStatusHistoryModel]:
     statement = (
         select(OrderStatusHistoryModel)
-        .where(
-            OrderStatusHistoryModel.internal_order_id
-            == internal_order_id
-        )
+        .where(OrderStatusHistoryModel.internal_order_id == internal_order_id)
         .order_by(
             OrderStatusHistoryModel.changed_at.asc(),
             OrderStatusHistoryModel.id.asc(),
         )
     )
 
-    return list(
-        session.scalars(statement).all()
-    )
+    return list(session.scalars(statement).all())

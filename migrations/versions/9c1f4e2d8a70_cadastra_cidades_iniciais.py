@@ -1,4 +1,4 @@
-﻿"""cadastra cidades iniciais
+"""cadastra cidades iniciais
 
 Revision ID: 9c1f4e2d8a70
 Revises: 7a3b58ae0f46
@@ -125,8 +125,6 @@ def downgrade() -> None:
 
     connection.execute(
         sa.delete(cities_table).where(
-            cities_table.c.city_ibge_code.in_(
-                CITY_IBGE_CODES
-            )
+            cities_table.c.city_ibge_code.in_(CITY_IBGE_CODES)
         )
     )

@@ -1,4 +1,4 @@
-﻿import json
+import json
 from datetime import datetime
 
 from sqlalchemy import func, select
@@ -74,13 +74,9 @@ def list_orders(
     filters = []
 
     if order_status is not None:
-        filters.append(
-            OrderModel.status == order_status.value
-        )
+        filters.append(OrderModel.status == order_status.value)
 
-    total_statement = select(
-        func.count(OrderModel.internal_order_id)
-    ).where(*filters)
+    total_statement = select(func.count(OrderModel.internal_order_id)).where(*filters)
 
     total = session.scalar(total_statement) or 0
 
@@ -92,13 +88,10 @@ def list_orders(
         .offset(offset)
     )
 
-    database_orders = session.scalars(
-        statement
-    ).all()
+    database_orders = session.scalars(statement).all()
 
     orders = [
-        order_model_to_response(database_order)
-        for database_order in database_orders
+        order_model_to_response(database_order) for database_order in database_orders
     ]
 
     return orders, total
@@ -107,9 +100,7 @@ def list_orders(
 def order_model_to_response(
     database_order: OrderModel,
 ) -> OrderResponse:
-    property_data = json.loads(
-        database_order.property_json
-    )
+    property_data = json.loads(database_order.property_json)
 
     return OrderResponse(
         internal_order_id=database_order.internal_order_id,
@@ -143,4 +134,3 @@ def update_order_status(
         session.flush()
 
     return order_model_to_response(database_order)
-

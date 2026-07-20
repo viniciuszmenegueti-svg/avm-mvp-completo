@@ -1,4 +1,4 @@
-﻿from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient
 
 from app.main import app
 
@@ -37,10 +37,7 @@ def test_all_returned_cities_are_active() -> None:
 
     cities = response.json()
 
-    assert all(
-        city["active"] is True
-        for city in cities
-    )
+    assert all(city["active"] is True for city in cities)
 
 
 def test_cities_are_sorted_by_name() -> None:
@@ -48,9 +45,6 @@ def test_cities_are_sorted_by_name() -> None:
 
     assert response.status_code == 200
 
-    city_names = [
-        city["name"]
-        for city in response.json()
-    ]
+    city_names = [city["name"] for city in response.json()]
 
     assert city_names == sorted(city_names)
