@@ -43,5 +43,10 @@ jobs:
       - name: Executar testes com cobertura
         run: python -m pytest
 
+      - name: Validar Docker Compose
+        env:
+          POSTGRES_PASSWORD: ci_password
+        run: docker compose config --quiet
+
       - name: Construir imagem Docker
         run: docker build -t avm-api:ci .
