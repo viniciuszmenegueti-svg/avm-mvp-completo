@@ -28,6 +28,9 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements-dev.txt
 
+      - name: Auditar dependencias de producao
+        run: pip-audit -r requirements.txt
+
       - name: Verificar qualidade do codigo
         run: ruff check .
 
