@@ -37,6 +37,9 @@ jobs:
       - name: Verificar formatacao do codigo
         run: ruff format --check .
 
+      - name: Verificar tipos com MyPy
+        run: python -m mypy app
+
       - name: Executar testes com cobertura
         run: python -m pytest
 

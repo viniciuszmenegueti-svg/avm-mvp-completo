@@ -1,5 +1,8 @@
+from typing import cast
+
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
+from starlette.types import ExceptionHandler
 
 from app.api.routes.cities import router as cities_router
 from app.api.routes.health import router as health_router
@@ -7,6 +10,11 @@ from app.api.routes.order_status_history import (
     router as order_status_history_router,
 )
 from app.api.routes.orders import router as orders_router
+from app.core.config import (
+    APP_DESCRIPTION,
+    APP_NAME,
+    APP_VERSION,
+)
 from app.core.exception_handlers import (
     unexpected_error_handler,
     validation_error_handler,
@@ -16,11 +24,6 @@ from app.core.lifespan import application_lifespan
 from app.core.logging_config import configure_logging
 from app.core.request_id import RequestIdMiddleware
 from app.core.security_headers import SecurityHeadersMiddleware
-from app.core.config import (
-    APP_DESCRIPTION,
-    APP_NAME,
-    APP_VERSION,
-)
 
 
 configure_logging()
@@ -39,7 +42,7 @@ app.add_middleware(RequestIdMiddleware)
 
 app.add_exception_handler(
     RequestValidationError,
-    validation_error_handler,
+    cast(ExceptionHandler, validation_error_handler),
 )
 app.add_exception_handler(
     Exception,
