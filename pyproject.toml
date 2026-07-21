@@ -17,3 +17,12 @@ addopts = [
     "--cov-report=term-missing",
     "--cov-fail-under=95",
 ]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["app"]
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+show_error_codes = true
+pretty = true
