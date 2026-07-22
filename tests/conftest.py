@@ -7,6 +7,8 @@ from sqlalchemy import delete
 TEST_DATABASE_FILE = Path(__file__).resolve().parent / "test_avm.db"
 
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DATABASE_FILE.as_posix()}"
+os.environ["APP_DEBUG"] = "false"
+os.environ["APP_ENV"] = "test"
 
 from app.domain.city_model import CityModel
 from app.domain.order_model import OrderModel

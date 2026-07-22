@@ -11,6 +11,7 @@ from app.api.routes.order_status_history import (
 )
 from app.api.routes.orders import router as orders_router
 from app.core.config import (
+    APP_DEBUG,
     APP_DESCRIPTION,
     APP_NAME,
     APP_VERSION,
@@ -33,6 +34,7 @@ app = FastAPI(
     title=APP_NAME,
     version=APP_VERSION,
     description=APP_DESCRIPTION,
+    debug=APP_DEBUG,
     lifespan=application_lifespan,
 )
 
