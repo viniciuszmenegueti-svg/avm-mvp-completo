@@ -189,6 +189,52 @@ def validate_health_response(
         )
 
 
+def validate_valuation(
+    valuation: dict[str, Any],
+    internal_order_id: str,
+) -> None:
+    assert_equal(
+        valuation["internal_order_id"],
+        internal_order_id,
+        "internal_order_id da avaliação",
+    )
+    assert_equal(
+        valuation["method"],
+        "RULE_BASED_V1",
+        "método da avaliação",
+    )
+    assert_equal(
+        valuation["estimated_value"],
+        "735000.00",
+        "valor estimado",
+    )
+    assert_equal(
+        valuation["minimum_value"],
+        "661500.00",
+        "valor mínimo",
+    )
+    assert_equal(
+        valuation["maximum_value"],
+        "808500.00",
+        "valor máximo",
+    )
+    assert_equal(
+        valuation["price_per_m2"],
+        "10500.00",
+        "preço por metro quadrado",
+    )
+    assert_equal(
+        valuation["reference_area_m2"],
+        "70.00",
+        "área de referência",
+    )
+    assert_equal(
+        valuation["confidence_score"],
+        "0.8000",
+        "índice de confiança",
+    )
+
+
 def run_integration_test() -> None:
     print(f"URL da API: {BASE_URL}")
     print(f"Nome esperado: {EXPECTED_APP_NAME}")
@@ -302,7 +348,7 @@ def run_integration_test() -> None:
         "external_order_id consultado",
     )
 
-    print("Atualizando status da ordem...")
+    print("Atualizando status para VALIDATING_INPUT...")
     updated_order = request_json(
         method="PATCH",
         path=f"/orders/{internal_order_id}/status",
@@ -312,7 +358,50 @@ def run_integration_test() -> None:
     assert_equal(
         updated_order["status"],
         "VALIDATING_INPUT",
-        "status atualizado",
+        "status após validação",
+    )
+
+    print("Calculando avaliação AVM...")
+    created_valuation = request_json(
+        method="POST",
+        path=f"/orders/{internal_order_id}/valuation",
+        expected_status=201,
+    )
+
+    validate_valuation(
+        valuation=created_valuation,
+        internal_order_id=internal_order_id,
+    )
+
+    valuation_id = created_valuation["valuation_id"]
+
+    print("Consultando avaliação AVM...")
+    queried_valuation = request_json(
+        method="GET",
+        path=f"/orders/{internal_order_id}/valuation",
+    )
+
+    validate_valuation(
+        valuation=queried_valuation,
+        internal_order_id=internal_order_id,
+    )
+
+    assert_equal(
+        queried_valuation["valuation_id"],
+        valuation_id,
+        "valuation_id consultado",
+    )
+
+    print("Confirmando status final da ordem...")
+    completed_order = request_json(
+        method="GET",
+        path=f"/orders/{internal_order_id}",
+    )
+
+    assert_equal(
+        completed_order["status"],
+        "COMPLETED",
+        "status final da ordem",
     )
 
     print("Consultando histórico de status...")
@@ -321,23 +410,50 @@ def run_integration_test() -> None:
         path=f"/orders/{internal_order_id}/status-history",
     )
 
-    if len(status_history) < 1:
-        raise AssertionError("O histórico de status está vazio.")
+    assert_equal(
+        len(status_history),
+        2,
+        "quantidade de registros no histórico",
+    )
 
+    first_history = status_history[0]
     latest_history = status_history[-1]
 
     assert_equal(
-        latest_history["previous_status"],
+        first_history["previous_status"],
         "RECEIVED",
-        "status anterior do histórico",
+        "primeiro status anterior",
+    )
+    assert_equal(
+        first_history["new_status"],
+        "VALIDATING_INPUT",
+        "primeiro status novo",
+    )
+    assert_equal(
+        latest_history["previous_status"],
+        "VALIDATING_INPUT",
+        "último status anterior",
     )
     assert_equal(
         latest_history["new_status"],
-        "VALIDATING_INPUT",
-        "novo status do histórico",
+        "COMPLETED",
+        "último status novo",
     )
 
-    print("Verificando bloqueio de duplicidade...")
+    print("Verificando idempotência da avaliação...")
+    repeated_valuation = request_json(
+        method="POST",
+        path=f"/orders/{internal_order_id}/valuation",
+        expected_status=201,
+    )
+
+    assert_equal(
+        repeated_valuation["valuation_id"],
+        valuation_id,
+        "valuation_id repetido",
+    )
+
+    print("Verificando bloqueio de duplicidade da ordem...")
     duplicate_response = request_json(
         method="POST",
         path="/orders",
@@ -352,7 +468,9 @@ def run_integration_test() -> None:
     print("Teste de integração concluído com sucesso.")
     print(f"Ordem externa: {external_order_id}")
     print(f"Ordem interna: {internal_order_id}")
-    print("Status final: VALIDATING_INPUT")
+    print(f"Avaliação: {valuation_id}")
+    print("Valor estimado: R$ 735.000,00")
+    print("Status final: COMPLETED")
     print("Duplicidade: bloqueada com HTTP 409")
 
 
