@@ -1,5 +1,6 @@
 import logging
 
+from app.core.config import LOG_LEVEL
 from app.core.request_id import get_request_id
 
 
@@ -18,7 +19,7 @@ def configure_logging() -> None:
     handler.addFilter(RequestIdLogFilter())
 
     formatter = logging.Formatter(
-        ("%(asctime)s %(levelname)s request_id=%(request_id)s %(name)s %(message)s")
+        "%(asctime)s %(levelname)s request_id=%(request_id)s %(name)s %(message)s"
     )
 
     handler.setFormatter(formatter)
@@ -27,4 +28,4 @@ def configure_logging() -> None:
 
     root_logger.handlers.clear()
     root_logger.addHandler(handler)
-    root_logger.setLevel(logging.INFO)
+    root_logger.setLevel(LOG_LEVEL)
