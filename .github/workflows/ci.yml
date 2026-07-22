@@ -64,6 +64,9 @@ jobs:
           POSTGRES_PASSWORD: ci_password
         run: docker compose up -d --build
 
+      - name: Verificar migrations pendentes
+        run: docker compose exec -T api alembic check
+
       - name: Executar teste de integracao
         run: python scripts/integration-test.py
 
