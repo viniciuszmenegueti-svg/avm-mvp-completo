@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -124,3 +126,22 @@ def test_rejects_valuation_before_input_validation() -> None:
 
     assert response.status_code == 409
     assert response.json()["detail"]["code"] == ("INVALID_STATUS_TRANSITION")
+
+
+def test_returns_unprocessable_entity_for_calculation_error() -> None:
+    internal_order_id = create_order("VALUATION-ROUTE-005")
+
+    move_order_to_validating_input(internal_order_id)
+
+    with patch(
+        "app.api.routes.valuations.calculate_and_store_valuation",
+        side_effect=ValueError("Não existe preço-base configurado para a cidade."),
+    ):
+        response = client.post(f"/orders/{internal_order_id}/valuation")
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == {
+        "code": "VALUATION_CALCULATION_ERROR",
+        "message": ("Não existe preço-base configurado para a cidade."),
+        "internal_order_id": internal_order_id,
+    }
