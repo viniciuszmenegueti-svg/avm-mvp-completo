@@ -1,14 +1,17 @@
 import os
 import runpy
-from unittest.mock import patch
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 
-DATABASE_MODULE = "app.infrastructure.database"
+DATABASE_FILE = (
+    Path(__file__).resolve().parents[1] / "app" / "infrastructure" / "database.py"
+)
 
 
-def execute_database_module(
+def execute_database_file(
     database_url: str,
-):
+) -> MagicMock:
     with (
         patch.dict(
             os.environ,
@@ -17,9 +20,9 @@ def execute_database_module(
         ),
         patch("sqlalchemy.create_engine") as create_engine_mock,
     ):
-        runpy.run_module(
-            DATABASE_MODULE,
-            run_name=f"{DATABASE_MODULE}.__configuration_test__",
+        runpy.run_path(
+            str(DATABASE_FILE),
+            run_name="database_configuration_test",
         )
 
     return create_engine_mock
@@ -28,7 +31,7 @@ def execute_database_module(
 def test_sqlite_database_uses_check_same_thread() -> None:
     sqlite_url = "sqlite:///test-database.db"
 
-    create_engine_mock = execute_database_module(sqlite_url)
+    create_engine_mock = execute_database_file(sqlite_url)
 
     create_engine_mock.assert_called_once_with(
         sqlite_url,
@@ -43,7 +46,7 @@ def test_sqlite_database_uses_check_same_thread() -> None:
 def test_postgresql_database_uses_connect_timeout() -> None:
     postgresql_url = "postgresql+psycopg://user:password@localhost:5432/avm"
 
-    create_engine_mock = execute_database_module(postgresql_url)
+    create_engine_mock = execute_database_file(postgresql_url)
 
     create_engine_mock.assert_called_once_with(
         postgresql_url,
