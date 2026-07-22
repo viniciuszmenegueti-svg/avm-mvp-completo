@@ -7,10 +7,12 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.core.config import APP_VERSION
-from app.infrastructure.dependencies import (
-    DatabaseSession,
+from app.core.config import (
+    APP_ENV,
+    APP_NAME,
+    APP_VERSION,
 )
+from app.infrastructure.dependencies import DatabaseSession
 
 
 router = APIRouter(
@@ -37,17 +39,25 @@ def verify_database_connection(
         ) from error
 
 
+def base_health_response() -> dict[str, str]:
+    return {
+        "status": "ok",
+        "service": "avm-api",
+        "name": APP_NAME,
+        "version": APP_VERSION,
+        "environment": APP_ENV,
+    }
+
+
 def ready_response(
     session: Session,
 ) -> dict[str, str]:
     verify_database_connection(session)
 
-    return {
-        "status": "ok",
-        "service": "avm-api",
-        "version": APP_VERSION,
-        "database": "ok",
-    }
+    response = base_health_response()
+    response["database"] = "ok"
+
+    return response
 
 
 @router.get(
@@ -65,11 +75,7 @@ def health_check(
     summary="Verifica se a aplicação está em execução",
 )
 def liveness_check() -> dict[str, str]:
-    return {
-        "status": "ok",
-        "service": "avm-api",
-        "version": APP_VERSION,
-    }
+    return base_health_response()
 
 
 @router.get(

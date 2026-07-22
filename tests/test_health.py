@@ -4,9 +4,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
-from app.infrastructure.dependencies import (
-    get_database_session,
-)
+from app.infrastructure.dependencies import get_database_session
 from app.main import app
 
 
@@ -20,7 +18,9 @@ def test_health_endpoint() -> None:
     assert response.json() == {
         "status": "ok",
         "service": "avm-api",
+        "name": "AVM Imóveis API",
         "version": "0.1.0",
+        "environment": "test",
         "database": "ok",
     }
 
@@ -32,7 +32,9 @@ def test_liveness_endpoint() -> None:
     assert response.json() == {
         "status": "ok",
         "service": "avm-api",
+        "name": "AVM Imóveis API",
         "version": "0.1.0",
+        "environment": "test",
     }
 
 
@@ -43,7 +45,9 @@ def test_readiness_endpoint() -> None:
     assert response.json() == {
         "status": "ok",
         "service": "avm-api",
+        "name": "AVM Imóveis API",
         "version": "0.1.0",
+        "environment": "test",
         "database": "ok",
     }
 
