@@ -105,3 +105,14 @@ def test_rejects_city_without_base_price() -> None:
         match="Não existe preço-base configurado para a cidade",
     ):
         get_base_price_per_m2(property_data)
+
+
+def test_rejects_property_without_reference_area() -> None:
+    property_data = apartment_property()
+    property_data.private_area_m2 = None
+
+    with pytest.raises(
+        ValueError,
+        match="Não foi possível determinar a área de referência",
+    ):
+        get_reference_area(property_data)
