@@ -50,3 +50,46 @@ jobs:
 
       - name: Construir imagem Docker
         run: docker build -t avm-api:ci .
+
+      - name: Iniciar ambiente Docker
+        env:
+          POSTGRES_PASSWORD: ci_password
+        run: docker compose up -d --build
+
+      - name: Aguardar API ficar pronta
+        run: |
+          for tentativa in {1..30}; do
+            if curl --fail --silent \
+              http://localhost:8000/health/ready; then
+              echo
+              echo "API pronta."
+              exit 0
+            fi
+
+            echo "Aguardando API... tentativa ${tentativa}/30"
+            sleep 2
+          done
+
+          echo "A API nao ficou pronta dentro do prazo."
+          docker compose ps
+          docker compose logs
+          exit 1
+
+      - name: Testar endpoints principais
+        run: |
+          curl --fail --silent \
+            http://localhost:8000/health/live
+
+          curl --fail --silent \
+            http://localhost:8000/health/ready
+
+          curl --fail --silent \
+            http://localhost:8000/cities
+
+      - name: Exibir logs em caso de falha
+        if: failure()
+        run: docker compose logs
+
+      - name: Encerrar ambiente Docker
+        if: always()
+        run: docker compose down -v
