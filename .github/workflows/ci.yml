@@ -142,6 +142,24 @@ jobs:
 
           test "$status" = "VALIDATING_INPUT"
 
+      - name: Consultar historico de status
+        run: |
+          response=$(curl --fail --silent \
+            "http://localhost:8000/orders/${INTERNAL_ORDER_ID}/status-history")
+
+          echo "$response"
+
+          echo "$response" | python -c "
+          import json
+          import sys
+
+          data = json.load(sys.stdin)
+
+          assert len(data) >= 1
+          assert data[-1]['previous_status'] == 'RECEIVED'
+          assert data[-1]['new_status'] == 'VALIDATING_INPUT'
+          "
+
       - name: Exibir logs em caso de falha
         if: failure()
         run: docker compose logs
