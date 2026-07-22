@@ -160,6 +160,41 @@ jobs:
           assert data[-1]['new_status'] == 'VALIDATING_INPUT'
           "
 
+      - name: Bloquear ordem duplicada
+        run: |
+          status_code=$(curl --silent \
+            --output duplicate-response.json \
+            --write-out "%{http_code}" \
+            --request POST \
+            --header "Content-Type: application/json" \
+            --data '{
+              "external_order_id": "CI-ORDER-000001",
+              "property": {
+                "property_type": "APARTMENT",
+                "state": "SP",
+                "city": "São Paulo",
+                "city_ibge_code": "3550308",
+                "postal_code": "01001-000",
+                "neighborhood": "Centro",
+                "street": "Rua de Teste",
+                "number": "100",
+                "complement": "Apartamento 10",
+                "private_area_m2": 70,
+                "built_area_m2": 80,
+                "land_area_m2": null,
+                "bedrooms": 2,
+                "bathrooms": 2,
+                "parking_spaces": 1
+              }
+            }' \
+            http://localhost:8000/orders)
+
+          cat duplicate-response.json
+          echo
+          echo "Status HTTP: $status_code"
+
+          test "$status_code" = "409"
+
       - name: Exibir logs em caso de falha
         if: failure()
         run: docker compose logs
