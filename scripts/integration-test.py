@@ -3,7 +3,7 @@ import sys
 import time
 import uuid
 from typing import Any
-from urllib.error import HTTPError, URLError
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 
@@ -47,7 +47,7 @@ def request_json(
         status_code = error.code
         response_body = error.read().decode("utf-8")
 
-    except URLError as error:
+    except OSError as error:
         raise RuntimeError(
             f"Não foi possível acessar {BASE_URL}{path}: {error}"
         ) from error
@@ -79,14 +79,12 @@ def wait_until_ready() -> None:
                 print("API pronta.")
                 return
 
-        except (AssertionError, RuntimeError):
-            pass
+        except (AssertionError, RuntimeError, json.JSONDecodeError) as error:
+            print(f"Tentativa {attempt}/{MAX_READY_ATTEMPTS} falhou: {error}")
 
-        print(
-            f"Tentativa {attempt}/{MAX_READY_ATTEMPTS}. "
-            f"Nova tentativa em {READY_INTERVAL_SECONDS} segundos."
-        )
-        time.sleep(READY_INTERVAL_SECONDS)
+        if attempt < MAX_READY_ATTEMPTS:
+            print(f"Nova tentativa em {READY_INTERVAL_SECONDS} segundos.")
+            time.sleep(READY_INTERVAL_SECONDS)
 
     raise RuntimeError("A API não ficou pronta dentro do prazo.")
 
