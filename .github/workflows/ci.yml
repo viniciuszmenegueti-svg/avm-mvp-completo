@@ -113,6 +113,11 @@ jobs:
             }' \
             http://localhost:8000/orders
 
+      - name: Consultar ordem criada
+        run: |
+          curl --fail --silent \
+            http://localhost:8000/orders/external/CI-ORDER-000001
+
       - name: Exibir logs em caso de falha
         if: failure()
         run: docker compose logs
