@@ -79,7 +79,11 @@ def wait_until_ready() -> None:
                 print("API pronta.")
                 return
 
-        except (AssertionError, RuntimeError, json.JSONDecodeError) as error:
+        except (
+            AssertionError,
+            RuntimeError,
+            json.JSONDecodeError,
+        ) as error:
             print(f"Tentativa {attempt}/{MAX_READY_ATTEMPTS} falhou: {error}")
 
         if attempt < MAX_READY_ATTEMPTS:
@@ -122,7 +126,25 @@ def run_integration_test() -> None:
         method="GET",
         path="/health/live",
     )
+
     assert live_response["status"] == "ok"
+    assert live_response["service"] == "avm-api"
+    assert live_response["name"] == "AVM Imoveis API"
+    assert live_response["version"] == "0.1.0"
+    assert live_response["environment"] == "development"
+
+    print("Verificando readiness...")
+    ready_response = request_json(
+        method="GET",
+        path="/health/ready",
+    )
+
+    assert ready_response["status"] == "ok"
+    assert ready_response["service"] == "avm-api"
+    assert ready_response["name"] == "AVM Imoveis API"
+    assert ready_response["version"] == "0.1.0"
+    assert ready_response["environment"] == "development"
+    assert ready_response["database"] == "ok"
 
     print("Verificando cidades...")
     cities = request_json(
