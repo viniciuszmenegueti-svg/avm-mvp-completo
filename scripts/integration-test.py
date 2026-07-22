@@ -198,6 +198,38 @@ def run_integration_test() -> None:
 
     wait_until_ready()
 
+    print("Verificando rota principal...")
+    root_response = request_json(
+        method="GET",
+        path="/",
+    )
+
+    assert_equal(
+        root_response["message"],
+        f"{EXPECTED_APP_NAME} em execução",
+        "message",
+    )
+    assert_equal(
+        root_response["name"],
+        EXPECTED_APP_NAME,
+        "name da rota principal",
+    )
+    assert_equal(
+        root_response["version"],
+        EXPECTED_APP_VERSION,
+        "version da rota principal",
+    )
+    assert_equal(
+        root_response["status"],
+        "running",
+        "status da rota principal",
+    )
+    assert_equal(
+        root_response["documentation"],
+        "/docs",
+        "documentation",
+    )
+
     print("Verificando liveness...")
     live_response = request_json(
         method="GET",
