@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import time
 import uuid
@@ -7,7 +8,26 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = os.getenv(
+    "INTEGRATION_BASE_URL",
+    "http://localhost:8000",
+)
+
+EXPECTED_APP_NAME = os.getenv(
+    "APP_NAME",
+    "AVM Imoveis API",
+)
+
+EXPECTED_APP_VERSION = os.getenv(
+    "APP_VERSION",
+    "0.1.0",
+)
+
+EXPECTED_APP_ENV = os.getenv(
+    "APP_ENV",
+    "development",
+)
+
 MAX_READY_ATTEMPTS = 30
 READY_INTERVAL_SECONDS = 2
 
@@ -65,6 +85,19 @@ def request_json(
     return json.loads(response_body)
 
 
+def assert_equal(
+    actual: Any,
+    expected: Any,
+    field_name: str,
+) -> None:
+    if actual != expected:
+        raise AssertionError(
+            f"Valor inesperado para '{field_name}'. "
+            f"Recebido: {actual!r}. "
+            f"Esperado: {expected!r}."
+        )
+
+
 def wait_until_ready() -> None:
     print("Aguardando a API ficar pronta...")
 
@@ -118,7 +151,51 @@ def build_order_payload(
     }
 
 
+def validate_health_response(
+    response: dict[str, Any],
+    include_database: bool,
+) -> None:
+    assert_equal(
+        response["status"],
+        "ok",
+        "status",
+    )
+    assert_equal(
+        response["service"],
+        "avm-api",
+        "service",
+    )
+    assert_equal(
+        response["name"],
+        EXPECTED_APP_NAME,
+        "name",
+    )
+    assert_equal(
+        response["version"],
+        EXPECTED_APP_VERSION,
+        "version",
+    )
+    assert_equal(
+        response["environment"],
+        EXPECTED_APP_ENV,
+        "environment",
+    )
+
+    if include_database:
+        assert_equal(
+            response["database"],
+            "ok",
+            "database",
+        )
+
+
 def run_integration_test() -> None:
+    print(f"URL da API: {BASE_URL}")
+    print(f"Nome esperado: {EXPECTED_APP_NAME}")
+    print(f"Versão esperada: {EXPECTED_APP_VERSION}")
+    print(f"Ambiente esperado: {EXPECTED_APP_ENV}")
+    print("")
+
     wait_until_ready()
 
     print("Verificando liveness...")
@@ -126,32 +203,31 @@ def run_integration_test() -> None:
         method="GET",
         path="/health/live",
     )
-
-    assert live_response["status"] == "ok"
-    assert live_response["service"] == "avm-api"
-    assert live_response["name"] == "AVM Imoveis API"
-    assert live_response["version"] == "0.1.0"
-    assert live_response["environment"] == "test"
+    validate_health_response(
+        response=live_response,
+        include_database=False,
+    )
 
     print("Verificando readiness...")
     ready_response = request_json(
         method="GET",
         path="/health/ready",
     )
-
-    assert ready_response["status"] == "ok"
-    assert ready_response["service"] == "avm-api"
-    assert ready_response["name"] == "AVM Imoveis API"
-    assert ready_response["version"] == "0.1.0"
-    assert ready_response["environment"] == "test"
-    assert ready_response["database"] == "ok"
+    validate_health_response(
+        response=ready_response,
+        include_database=True,
+    )
 
     print("Verificando cidades...")
     cities = request_json(
         method="GET",
         path="/cities",
     )
-    assert len(cities) == 10
+    assert_equal(
+        len(cities),
+        10,
+        "quantidade de cidades",
+    )
 
     external_order_id = f"INTEGRATION-{uuid.uuid4().hex[:12].upper()}"
     order_payload = build_order_payload(external_order_id)
@@ -166,8 +242,16 @@ def run_integration_test() -> None:
 
     internal_order_id = created_order["internal_order_id"]
 
-    assert created_order["external_order_id"] == external_order_id
-    assert created_order["status"] == "RECEIVED"
+    assert_equal(
+        created_order["external_order_id"],
+        external_order_id,
+        "external_order_id",
+    )
+    assert_equal(
+        created_order["status"],
+        "RECEIVED",
+        "status inicial",
+    )
 
     print("Consultando ordem pelo identificador externo...")
     queried_order = request_json(
@@ -175,8 +259,16 @@ def run_integration_test() -> None:
         path=f"/orders/external/{external_order_id}",
     )
 
-    assert queried_order["internal_order_id"] == internal_order_id
-    assert queried_order["external_order_id"] == external_order_id
+    assert_equal(
+        queried_order["internal_order_id"],
+        internal_order_id,
+        "internal_order_id",
+    )
+    assert_equal(
+        queried_order["external_order_id"],
+        external_order_id,
+        "external_order_id consultado",
+    )
 
     print("Atualizando status da ordem...")
     updated_order = request_json(
@@ -185,7 +277,11 @@ def run_integration_test() -> None:
         body={"status": "VALIDATING_INPUT"},
     )
 
-    assert updated_order["status"] == "VALIDATING_INPUT"
+    assert_equal(
+        updated_order["status"],
+        "VALIDATING_INPUT",
+        "status atualizado",
+    )
 
     print("Consultando histórico de status...")
     status_history = request_json(
@@ -193,12 +289,21 @@ def run_integration_test() -> None:
         path=f"/orders/{internal_order_id}/status-history",
     )
 
-    assert len(status_history) >= 1
+    if len(status_history) < 1:
+        raise AssertionError("O histórico de status está vazio.")
 
     latest_history = status_history[-1]
 
-    assert latest_history["previous_status"] == "RECEIVED"
-    assert latest_history["new_status"] == "VALIDATING_INPUT"
+    assert_equal(
+        latest_history["previous_status"],
+        "RECEIVED",
+        "status anterior do histórico",
+    )
+    assert_equal(
+        latest_history["new_status"],
+        "VALIDATING_INPUT",
+        "novo status do histórico",
+    )
 
     print("Verificando bloqueio de duplicidade...")
     duplicate_response = request_json(
@@ -208,7 +313,8 @@ def run_integration_test() -> None:
         expected_status=409,
     )
 
-    assert duplicate_response is not None
+    if duplicate_response is None:
+        raise AssertionError("A resposta de duplicidade está vazia.")
 
     print("")
     print("Teste de integração concluído com sucesso.")
@@ -225,7 +331,7 @@ def main() -> int:
 
     except Exception as error:
         print("")
-        print(f"Falha no teste de integração: {error}")
+        print(f"Falha no teste de integração: {type(error).__name__}: {error}")
         return 1
 
 
