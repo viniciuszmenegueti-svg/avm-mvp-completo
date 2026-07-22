@@ -14,6 +14,9 @@ os.environ["APP_DEBUG"] = "false"
 os.environ["LOG_LEVEL"] = "INFO"
 
 from app.domain.city_model import CityModel
+from app.domain.city_valuation_price_model import (
+    CityValuationPriceModel,
+)
 from app.domain.order_model import OrderModel
 from app.domain.order_status_history_model import (
     OrderStatusHistoryModel,
@@ -90,6 +93,25 @@ TEST_CITIES_DATA = [
 ]
 
 
+TEST_CITY_VALUATION_PRICES_DATA = [
+    {
+        "city_ibge_code": "3550308",
+        "property_type": "APARTMENT",
+        "price_per_m2": 10500,
+    },
+    {
+        "city_ibge_code": "3550308",
+        "property_type": "HOUSE",
+        "price_per_m2": 7800,
+    },
+    {
+        "city_ibge_code": "3550308",
+        "property_type": "LAND",
+        "price_per_m2": 5200,
+    },
+]
+
+
 Base.metadata.create_all(bind=engine)
 
 
@@ -99,9 +121,17 @@ def prepare_test_database():
         session.execute(delete(ValuationModel))
         session.execute(delete(OrderStatusHistoryModel))
         session.execute(delete(OrderModel))
+        session.execute(delete(CityValuationPriceModel))
         session.execute(delete(CityModel))
 
         session.add_all([CityModel(**city_data) for city_data in TEST_CITIES_DATA])
+
+        session.add_all(
+            [
+                CityValuationPriceModel(**price_data)
+                for price_data in TEST_CITY_VALUATION_PRICES_DATA
+            ]
+        )
 
         session.commit()
 
@@ -111,6 +141,7 @@ def prepare_test_database():
         session.execute(delete(ValuationModel))
         session.execute(delete(OrderStatusHistoryModel))
         session.execute(delete(OrderModel))
+        session.execute(delete(CityValuationPriceModel))
         session.execute(delete(CityModel))
         session.commit()
 

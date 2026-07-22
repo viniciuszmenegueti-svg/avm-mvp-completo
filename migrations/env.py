@@ -4,6 +4,9 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from app.domain.city_model import CityModel
+from app.domain.city_valuation_price_model import (
+    CityValuationPriceModel,
+)
 from app.domain.order_model import OrderModel
 from app.domain.order_status_history_model import (
     OrderStatusHistoryModel,
@@ -26,6 +29,7 @@ target_metadata = Base.metadata
 
 MODEL_CLASSES = (
     CityModel,
+    CityValuationPriceModel,
     OrderModel,
     OrderStatusHistoryModel,
     ValuationModel,
