@@ -10,6 +10,7 @@ from app.api.routes.order_status_history import (
     router as order_status_history_router,
 )
 from app.api.routes.orders import router as orders_router
+from app.api.routes.valuations import router as valuations_router
 from app.core.config import (
     APP_DEBUG,
     APP_DESCRIPTION,
@@ -69,5 +70,6 @@ def root() -> dict[str, str]:
 
 app.include_router(health_router)
 app.include_router(orders_router)
+app.include_router(valuations_router)
 app.include_router(order_status_history_router)
 app.include_router(cities_router)
