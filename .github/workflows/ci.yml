@@ -8,10 +8,15 @@ on:
     branches:
       - master
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   tests:
     name: Testes automatizados
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Baixar o codigo
