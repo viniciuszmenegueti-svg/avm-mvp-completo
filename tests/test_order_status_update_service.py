@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -25,7 +26,7 @@ from app.services.order_status_update import (
 
 def order_payload(
     external_order_id: str,
-) -> dict:
+) -> dict[str, object]:
     return {
         "external_order_id": external_order_id,
         "property": {
@@ -77,7 +78,7 @@ def test_updates_status_and_creates_history() -> None:
         )
 
     assert updated_order is not None
-    assert updated_order.status == (OrderStatus.VALIDATING_INPUT)
+    assert updated_order.status == OrderStatus.VALIDATING_INPUT
 
     with SessionLocal() as session:
         stored_order = get_order_by_internal_id(
@@ -91,7 +92,7 @@ def test_updates_status_and_creates_history() -> None:
         )
 
     assert stored_order is not None
-    assert stored_order.status == (OrderStatus.VALIDATING_INPUT)
+    assert stored_order.status == OrderStatus.VALIDATING_INPUT
 
     assert len(history) == 1
     assert history[0].previous_status == "RECEIVED"
@@ -109,8 +110,33 @@ def test_returns_none_for_unknown_order() -> None:
     assert updated_order is None
 
 
-def test_rejects_invalid_transition_without_history() -> None:
+def test_rolls_back_when_repository_returns_none() -> None:
     internal_order_id = create_test_order("STATUS-SERVICE-002")
+
+    with SessionLocal() as session:
+        with (
+            patch(
+                "app.services.order_status_update.update_order_status",
+                return_value=None,
+            ),
+            patch.object(
+                session,
+                "rollback",
+                wraps=session.rollback,
+            ) as rollback_mock,
+        ):
+            updated_order = update_order_status_with_history(
+                session=session,
+                internal_order_id=internal_order_id,
+                new_status=OrderStatus.VALIDATING_INPUT,
+            )
+
+    assert updated_order is None
+    rollback_mock.assert_called_once()
+
+
+def test_rejects_invalid_transition_without_history() -> None:
+    internal_order_id = create_test_order("STATUS-SERVICE-003")
 
     with SessionLocal() as session:
         with pytest.raises(InvalidOrderStatusTransitionError):
@@ -119,6 +145,51 @@ def test_rejects_invalid_transition_without_history() -> None:
                 internal_order_id=internal_order_id,
                 new_status=OrderStatus.COMPLETED,
             )
+
+    with SessionLocal() as session:
+        stored_order = get_order_by_internal_id(
+            session=session,
+            internal_order_id=internal_order_id,
+        )
+
+        history = list_order_status_history(
+            session=session,
+            internal_order_id=internal_order_id,
+        )
+
+    assert stored_order is not None
+    assert stored_order.status == OrderStatus.RECEIVED
+    assert history == []
+
+
+def test_rolls_back_when_history_creation_raises_transition_error() -> None:
+    internal_order_id = create_test_order("STATUS-SERVICE-004")
+
+    transition_error = InvalidOrderStatusTransitionError(
+        current_status="RECEIVED",
+        new_status="VALIDATING_INPUT",
+    )
+
+    with SessionLocal() as session:
+        with (
+            patch(
+                "app.services.order_status_update.create_order_status_history",
+                side_effect=transition_error,
+            ),
+            patch.object(
+                session,
+                "rollback",
+                wraps=session.rollback,
+            ) as rollback_mock,
+            pytest.raises(InvalidOrderStatusTransitionError),
+        ):
+            update_order_status_with_history(
+                session=session,
+                internal_order_id=internal_order_id,
+                new_status=OrderStatus.VALIDATING_INPUT,
+            )
+
+    rollback_mock.assert_called_once()
 
     with SessionLocal() as session:
         stored_order = get_order_by_internal_id(
