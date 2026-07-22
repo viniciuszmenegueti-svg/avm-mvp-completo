@@ -59,7 +59,7 @@ app.add_exception_handler(
 )
 def root() -> dict[str, str]:
     return {
-        "message": "AVM Imóveis API em execução",
+        "message": f"{APP_NAME} em execução",
         "name": APP_NAME,
         "version": APP_VERSION,
         "status": "running",
