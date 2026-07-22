@@ -88,7 +88,7 @@ jobs:
 
       - name: Criar ordem de teste
         run: |
-          curl --fail --silent \
+          response=$(curl --fail --silent \
             --request POST \
             --header "Content-Type: application/json" \
             --data '{
@@ -111,12 +111,36 @@ jobs:
                 "parking_spaces": 1
               }
             }' \
-            http://localhost:8000/orders
+            http://localhost:8000/orders)
+
+          echo "$response"
+
+          internal_order_id=$(echo "$response" | python -c \
+            "import json, sys; print(json.load(sys.stdin)['internal_order_id'])")
+
+          echo "INTERNAL_ORDER_ID=$internal_order_id" >> "$GITHUB_ENV"
 
       - name: Consultar ordem criada
         run: |
           curl --fail --silent \
             http://localhost:8000/orders/external/CI-ORDER-000001
+
+      - name: Atualizar status da ordem
+        run: |
+          response=$(curl --fail --silent \
+            --request PATCH \
+            --header "Content-Type: application/json" \
+            --data '{
+              "status": "VALIDATING_INPUT"
+            }' \
+            "http://localhost:8000/orders/${INTERNAL_ORDER_ID}/status")
+
+          echo "$response"
+
+          status=$(echo "$response" | python -c \
+            "import json, sys; print(json.load(sys.stdin)['status'])")
+
+          test "$status" = "VALIDATING_INPUT"
 
       - name: Exibir logs em caso de falha
         if: failure()
