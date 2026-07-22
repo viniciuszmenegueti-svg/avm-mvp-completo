@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from decimal import Decimal
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -198,3 +199,97 @@ def test_rejects_calculation_before_input_validation() -> None:
     assert stored_order is not None
     assert stored_order.status == OrderStatus.RECEIVED
     assert stored_valuation is None
+
+
+def test_rolls_back_when_order_update_returns_none() -> None:
+    internal_order_id = create_test_order("VALUATION-SERVICE-004")
+
+    move_order_to_validating_input(internal_order_id)
+
+    with SessionLocal() as session:
+        with (
+            patch(
+                "app.services.valuation_service.update_order_status",
+                return_value=None,
+            ),
+            patch.object(
+                session,
+                "rollback",
+                wraps=session.rollback,
+            ) as rollback_mock,
+        ):
+            valuation = calculate_and_store_valuation(
+                session=session,
+                internal_order_id=internal_order_id,
+            )
+
+    assert valuation is None
+    rollback_mock.assert_called_once()
+
+    with SessionLocal() as session:
+        stored_order = get_order_by_internal_id(
+            session=session,
+            internal_order_id=internal_order_id,
+        )
+
+        stored_valuation = get_valuation_by_internal_order_id(
+            session=session,
+            internal_order_id=internal_order_id,
+        )
+
+    assert stored_order is not None
+    assert stored_order.status == OrderStatus.VALIDATING_INPUT
+    assert stored_valuation is None
+
+
+def test_rolls_back_when_history_creation_fails() -> None:
+    internal_order_id = create_test_order("VALUATION-SERVICE-005")
+
+    move_order_to_validating_input(internal_order_id)
+
+    with SessionLocal() as session:
+        with (
+            patch(
+                "app.services.valuation_service.create_order_status_history",
+                side_effect=RuntimeError("Falha ao registrar histórico."),
+            ),
+            patch.object(
+                session,
+                "rollback",
+                wraps=session.rollback,
+            ) as rollback_mock,
+            pytest.raises(
+                RuntimeError,
+                match="Falha ao registrar histórico",
+            ),
+        ):
+            calculate_and_store_valuation(
+                session=session,
+                internal_order_id=internal_order_id,
+            )
+
+    rollback_mock.assert_called_once()
+
+    with SessionLocal() as session:
+        stored_order = get_order_by_internal_id(
+            session=session,
+            internal_order_id=internal_order_id,
+        )
+
+        stored_valuation = get_valuation_by_internal_order_id(
+            session=session,
+            internal_order_id=internal_order_id,
+        )
+
+        history = list_order_status_history(
+            session=session,
+            internal_order_id=internal_order_id,
+        )
+
+    assert stored_order is not None
+    assert stored_order.status == OrderStatus.VALIDATING_INPUT
+    assert stored_valuation is None
+
+    assert len(history) == 1
+    assert history[0].previous_status == "RECEIVED"
+    assert history[0].new_status == "VALIDATING_INPUT"
