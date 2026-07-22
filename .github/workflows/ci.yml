@@ -21,12 +21,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
+    env:
+      POSTGRES_PASSWORD: ci_password
+      APP_NAME: AVM Imoveis API
+      APP_VERSION: 0.1.0
+      APP_ENV: test
+      APP_DEBUG: "false"
+      LOG_LEVEL: INFO
+
     steps:
       - name: Baixar o codigo
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Configurar Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
@@ -52,16 +60,12 @@ jobs:
         run: python -m pytest
 
       - name: Validar Docker Compose
-        env:
-          POSTGRES_PASSWORD: ci_password
         run: docker compose config --quiet
 
       - name: Construir imagem Docker
         run: docker build -t avm-api:ci .
 
       - name: Iniciar ambiente Docker
-        env:
-          POSTGRES_PASSWORD: ci_password
         run: docker compose up -d --build
 
       - name: Verificar migrations pendentes
