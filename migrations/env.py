@@ -8,6 +8,7 @@ from app.domain.order_model import OrderModel
 from app.domain.order_status_history_model import (
     OrderStatusHistoryModel,
 )
+from app.domain.valuation_model import ValuationModel
 from app.infrastructure.database import Base, DATABASE_URL
 
 
@@ -27,6 +28,7 @@ MODEL_CLASSES = (
     CityModel,
     OrderModel,
     OrderStatusHistoryModel,
+    ValuationModel,
 )
 
 

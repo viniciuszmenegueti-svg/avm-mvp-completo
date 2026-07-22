@@ -18,6 +18,7 @@ from app.domain.order_model import OrderModel
 from app.domain.order_status_history_model import (
     OrderStatusHistoryModel,
 )
+from app.domain.valuation_model import ValuationModel
 from app.infrastructure.database import (
     Base,
     SessionLocal,
@@ -95,6 +96,7 @@ Base.metadata.create_all(bind=engine)
 @pytest.fixture(autouse=True)
 def prepare_test_database():
     with SessionLocal() as session:
+        session.execute(delete(ValuationModel))
         session.execute(delete(OrderStatusHistoryModel))
         session.execute(delete(OrderModel))
         session.execute(delete(CityModel))
@@ -106,6 +108,7 @@ def prepare_test_database():
     yield
 
     with SessionLocal() as session:
+        session.execute(delete(ValuationModel))
         session.execute(delete(OrderStatusHistoryModel))
         session.execute(delete(OrderModel))
         session.execute(delete(CityModel))
