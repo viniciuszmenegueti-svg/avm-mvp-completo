@@ -209,8 +209,9 @@ GET /health/ready
 ### Cidades
 
 ```text
-GET /cities
-GET /cities/{city_ibge_code}/valuation-prices
+GET   /cities
+GET   /cities/{city_ibge_code}/valuation-prices
+PATCH /cities/{city_ibge_code}/valuation-prices/{property_type}
 ```
 
 ### Ordens de Serviço
