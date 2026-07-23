@@ -30,6 +30,7 @@ from app.domain.order_refusal_model import OrderRefusalModel
 from app.domain.order_status_history_model import (
     OrderStatusHistoryModel,
 )
+from app.domain.property_model import PropertyModel
 from app.domain.valuation_model import ValuationModel
 from app.infrastructure.database import (
     Base,
@@ -129,6 +130,7 @@ def prepare_test_database() -> Generator[None]:
         session.execute(delete(ValuationModel))
         session.execute(delete(OrderRefusalModel))
         session.execute(delete(OrderStatusHistoryModel))
+        session.execute(delete(PropertyModel))
         session.execute(delete(OrderModel))
         session.execute(delete(CityValuationPriceModel))
         session.execute(delete(CityModel))
@@ -151,6 +153,7 @@ def prepare_test_database() -> Generator[None]:
         session.execute(delete(ValuationModel))
         session.execute(delete(OrderRefusalModel))
         session.execute(delete(OrderStatusHistoryModel))
+        session.execute(delete(PropertyModel))
         session.execute(delete(OrderModel))
         session.execute(delete(CityValuationPriceModel))
         session.execute(delete(CityModel))

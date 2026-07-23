@@ -1,16 +1,21 @@
 import json
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.domain.order_model import OrderModel
+from app.domain.property_model import PropertyModel
 from app.schemas.order import (
     OrderCreate,
     OrderResponse,
     OrderStatus,
 )
-from app.schemas.property import PropertyInput
+from app.schemas.property import (
+    PropertyInput,
+    PropertyType,
+)
 
 
 def create_order(
@@ -25,6 +30,25 @@ def create_order(
         status=OrderStatus.RECEIVED.value,
         received_at=received_at,
         property_json=order.property.model_dump_json(),
+    )
+
+    database_order.property_record = PropertyModel(
+        internal_order_id=internal_order_id,
+        property_type=order.property.property_type.value,
+        state=order.property.state,
+        city=order.property.city,
+        city_ibge_code=order.property.city_ibge_code,
+        postal_code=order.property.postal_code,
+        neighborhood=order.property.neighborhood,
+        street=order.property.street,
+        number=order.property.number,
+        complement=order.property.complement,
+        private_area_m2=order.property.private_area_m2,
+        built_area_m2=order.property.built_area_m2,
+        land_area_m2=order.property.land_area_m2,
+        bedrooms=order.property.bedrooms,
+        bathrooms=order.property.bathrooms,
+        parking_spaces=order.property.parking_spaces,
     )
 
     session.add(database_order)
@@ -100,14 +124,50 @@ def list_orders(
 def order_model_to_response(
     database_order: OrderModel,
 ) -> OrderResponse:
-    property_data = json.loads(database_order.property_json)
+    if database_order.property_record is not None:
+        property_data = property_model_to_input(database_order.property_record)
+    else:
+        property_data = PropertyInput.model_validate(
+            json.loads(database_order.property_json)
+        )
 
     return OrderResponse(
         internal_order_id=database_order.internal_order_id,
         external_order_id=database_order.external_order_id,
         status=OrderStatus(database_order.status),
         received_at=database_order.received_at,
-        property=PropertyInput(**property_data),
+        property=property_data,
+    )
+
+
+def decimal_to_float(
+    value: Decimal | None,
+) -> float | None:
+    if value is None:
+        return None
+
+    return float(value)
+
+
+def property_model_to_input(
+    database_property: PropertyModel,
+) -> PropertyInput:
+    return PropertyInput(
+        property_type=PropertyType(database_property.property_type),
+        state=database_property.state,
+        city=database_property.city,
+        city_ibge_code=database_property.city_ibge_code,
+        postal_code=database_property.postal_code,
+        neighborhood=database_property.neighborhood,
+        street=database_property.street,
+        number=database_property.number,
+        complement=database_property.complement,
+        private_area_m2=decimal_to_float(database_property.private_area_m2),
+        built_area_m2=decimal_to_float(database_property.built_area_m2),
+        land_area_m2=decimal_to_float(database_property.land_area_m2),
+        bedrooms=database_property.bedrooms,
+        bathrooms=database_property.bathrooms,
+        parking_spaces=database_property.parking_spaces,
     )
 
 
