@@ -38,5 +38,5 @@ LOG_LEVEL = os.getenv(
 
 ADMIN_API_KEY = os.getenv(
     "ADMIN_API_KEY",
-    "avm-local-admin-key",
+    "",
 )

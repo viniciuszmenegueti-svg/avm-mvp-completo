@@ -12,6 +12,18 @@ def require_admin_api_key(
         Header(alias="X-Admin-API-Key"),
     ] = None,
 ) -> None:
+    if not ADMIN_API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "code": "ADMIN_API_KEY_NOT_CONFIGURED",
+                "message": (
+                    "A chave administrativa não está configurada "
+                    "no ambiente da aplicação."
+                ),
+            },
+        )
+
     if x_admin_api_key is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
