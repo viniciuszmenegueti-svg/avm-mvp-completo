@@ -8,7 +8,7 @@ APP_NAME = os.getenv(
 
 APP_VERSION = os.getenv(
     "APP_VERSION",
-    "0.1.0",
+    "0.2.0-dev",
 )
 
 APP_DESCRIPTION = os.getenv(

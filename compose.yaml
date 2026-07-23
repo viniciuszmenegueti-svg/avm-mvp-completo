@@ -30,7 +30,7 @@
     environment:
       DATABASE_URL: postgresql+psycopg://avm_app:${POSTGRES_PASSWORD}@postgres:5432/avm
       APP_NAME: ${APP_NAME:-AVM Imoveis API}
-      APP_VERSION: ${APP_VERSION:-0.1.0}
+      APP_VERSION: ${APP_VERSION:-0.2.0-dev}
       APP_ENV: ${APP_ENV:-development}
       APP_DEBUG: ${APP_DEBUG:-false}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
