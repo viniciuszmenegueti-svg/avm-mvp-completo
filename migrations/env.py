@@ -11,6 +11,7 @@ from app.domain.city_valuation_price_model import (
     CityValuationPriceModel,
 )
 from app.domain.order_model import OrderModel
+from app.domain.order_refusal_model import OrderRefusalModel
 from app.domain.order_status_history_model import (
     OrderStatusHistoryModel,
 )
@@ -35,6 +36,7 @@ MODEL_CLASSES = (
     CityValuationPriceModel,
     CityValuationPriceHistoryModel,
     OrderModel,
+    OrderRefusalModel,
     OrderStatusHistoryModel,
     ValuationModel,
 )

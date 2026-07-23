@@ -6,6 +6,9 @@ from sqlalchemy.orm import Session
 from app.repositories.city_valuation_prices_sqlalchemy import (
     get_city_valuation_price,
 )
+from app.repositories.order_refusals_sqlalchemy import (
+    create_order_refusal,
+)
 from app.repositories.order_status_history_sqlalchemy import (
     create_order_status_history,
 )
@@ -18,6 +21,10 @@ from app.repositories.valuations_sqlalchemy import (
     get_valuation_by_internal_order_id,
 )
 from app.schemas.order import OrderStatus
+from app.schemas.order_refusal import (
+    OrderRefusalCreate,
+    OrderRefusalReason,
+)
 from app.schemas.valuation import ValuationResponse
 from app.services.order_status import (
     validate_order_status_transition,
@@ -47,11 +54,6 @@ def calculate_and_store_valuation(
     if existing_valuation is not None:
         return existing_valuation
 
-    validate_order_status_transition(
-        current_status=order.status,
-        new_status=OrderStatus.COMPLETED,
-    )
-
     city_price = get_city_valuation_price(
         session=session,
         city_ibge_code=order.property.city_ibge_code,
@@ -59,7 +61,61 @@ def calculate_and_store_valuation(
     )
 
     if city_price is None:
-        raise ValueError("Não existe preço-base configurado para a cidade e tipologia.")
+        validate_order_status_transition(
+            current_status=order.status,
+            new_status=OrderStatus.REFUSED,
+        )
+
+        refusal = OrderRefusalCreate(
+            reason_code=OrderRefusalReason.MISSING_BASE_PRICE,
+            message=("Não existe preço-base configurado para a cidade e tipologia."),
+            details={
+                "city_ibge_code": order.property.city_ibge_code,
+                "property_type": order.property.property_type.value,
+            },
+        )
+
+        try:
+            create_order_refusal(
+                session=session,
+                refusal_id=str(uuid4()),
+                internal_order_id=internal_order_id,
+                refusal=refusal,
+                refused_at=datetime.now(timezone.utc),
+                commit=False,
+            )
+
+            updated_order = update_order_status(
+                session=session,
+                internal_order_id=internal_order_id,
+                new_status=OrderStatus.REFUSED,
+                commit=False,
+            )
+
+            if updated_order is None:
+                session.rollback()
+                return None
+
+            create_order_status_history(
+                session=session,
+                internal_order_id=internal_order_id,
+                previous_status=order.status,
+                new_status=OrderStatus.REFUSED,
+                commit=False,
+            )
+
+            session.commit()
+
+            return None
+
+        except Exception:
+            session.rollback()
+            raise
+
+    validate_order_status_transition(
+        current_status=order.status,
+        new_status=OrderStatus.COMPLETED,
+    )
 
     calculation = calculate_valuation(
         property_data=order.property,

@@ -26,6 +26,7 @@ from app.domain.city_valuation_price_model import (
     CityValuationPriceModel,
 )
 from app.domain.order_model import OrderModel
+from app.domain.order_refusal_model import OrderRefusalModel
 from app.domain.order_status_history_model import (
     OrderStatusHistoryModel,
 )
@@ -126,6 +127,7 @@ def prepare_test_database() -> Generator[None]:
     with SessionLocal() as session:
         session.execute(delete(CityValuationPriceHistoryModel))
         session.execute(delete(ValuationModel))
+        session.execute(delete(OrderRefusalModel))
         session.execute(delete(OrderStatusHistoryModel))
         session.execute(delete(OrderModel))
         session.execute(delete(CityValuationPriceModel))
@@ -136,7 +138,7 @@ def prepare_test_database() -> Generator[None]:
         session.add_all(
             [
                 CityValuationPriceModel(**price_data)
-                for price_data in (TEST_CITY_VALUATION_PRICES_DATA)
+                for price_data in TEST_CITY_VALUATION_PRICES_DATA
             ]
         )
 
@@ -147,6 +149,7 @@ def prepare_test_database() -> Generator[None]:
     with SessionLocal() as session:
         session.execute(delete(CityValuationPriceHistoryModel))
         session.execute(delete(ValuationModel))
+        session.execute(delete(OrderRefusalModel))
         session.execute(delete(OrderStatusHistoryModel))
         session.execute(delete(OrderModel))
         session.execute(delete(CityValuationPriceModel))
