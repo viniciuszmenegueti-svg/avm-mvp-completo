@@ -29,9 +29,7 @@ from app.schemas.valuation import ValuationResponse
 from app.services.order_status import (
     validate_order_status_transition,
 )
-from app.services.valuation_calculator import (
-    calculate_valuation,
-)
+from engine.registry import get_default_model_version
 
 
 def calculate_and_store_valuation(
@@ -117,9 +115,11 @@ def calculate_and_store_valuation(
         new_status=OrderStatus.COMPLETED,
     )
 
-    calculation = calculate_valuation(
-        property_data=order.property,
-        price_per_m2=city_price.price_per_m2,
+    model_version = get_default_model_version()
+
+    calculation = model_version.calculator(
+        order.property,
+        city_price.price_per_m2,
     )
 
     try:
@@ -127,7 +127,7 @@ def calculate_and_store_valuation(
             session=session,
             valuation_id=str(uuid4()),
             internal_order_id=internal_order_id,
-            method=calculation.method,
+            method=model_version.method,
             estimated_value=calculation.estimated_value,
             minimum_value=calculation.minimum_value,
             maximum_value=calculation.maximum_value,
