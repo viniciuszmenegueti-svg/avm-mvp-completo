@@ -120,6 +120,7 @@ APP_VERSION=0.1.0
 APP_ENV=development
 APP_DEBUG=false
 LOG_LEVEL=INFO
+ADMIN_API_KEY=change_this_admin_key
 ```
 
 O arquivo `.env` não deve ser enviado para o repositório.
