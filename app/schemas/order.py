@@ -9,8 +9,15 @@ from app.schemas.property import PropertyInput
 class OrderStatus(StrEnum):
     RECEIVED = "RECEIVED"
     VALIDATING_INPUT = "VALIDATING_INPUT"
+    ACCEPTED = "ACCEPTED"
+    QUEUED = "QUEUED"
+    PROCESSING = "PROCESSING"
     COMPLETED = "COMPLETED"
+    DELIVERING = "DELIVERING"
+    DELIVERED = "DELIVERED"
+    FAILED = "FAILED"
     REFUSED = "REFUSED"
+    CANCELLED = "CANCELLED"
 
 
 class OrderCreate(BaseModel):

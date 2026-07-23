@@ -10,13 +10,41 @@ ALLOWED_STATUS_TRANSITIONS: dict[
 ] = {
     OrderStatus.RECEIVED: {
         OrderStatus.VALIDATING_INPUT,
+        OrderStatus.CANCELLED,
     },
     OrderStatus.VALIDATING_INPUT: {
+        OrderStatus.ACCEPTED,
         OrderStatus.COMPLETED,
         OrderStatus.REFUSED,
+        OrderStatus.CANCELLED,
     },
-    OrderStatus.COMPLETED: set(),
+    OrderStatus.ACCEPTED: {
+        OrderStatus.QUEUED,
+        OrderStatus.CANCELLED,
+    },
+    OrderStatus.QUEUED: {
+        OrderStatus.PROCESSING,
+        OrderStatus.CANCELLED,
+    },
+    OrderStatus.PROCESSING: {
+        OrderStatus.COMPLETED,
+        OrderStatus.FAILED,
+        OrderStatus.CANCELLED,
+    },
+    OrderStatus.COMPLETED: {
+        OrderStatus.DELIVERING,
+    },
+    OrderStatus.DELIVERING: {
+        OrderStatus.DELIVERED,
+        OrderStatus.FAILED,
+    },
+    OrderStatus.FAILED: {
+        OrderStatus.QUEUED,
+        OrderStatus.CANCELLED,
+    },
+    OrderStatus.DELIVERED: set(),
     OrderStatus.REFUSED: set(),
+    OrderStatus.CANCELLED: set(),
 }
 
 
