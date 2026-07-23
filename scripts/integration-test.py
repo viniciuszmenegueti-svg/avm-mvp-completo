@@ -384,7 +384,7 @@ def run_integration_test() -> None:
         method="PATCH",
         path="/cities/3550308/valuation-prices/APARTMENT",
         body={
-            "price_per_m2": "10500.00",
+            "price_per_m2": "11000.00",
         },
         additional_headers={
             "X-Admin-API-Key": ADMIN_API_KEY,
@@ -394,8 +394,51 @@ def run_integration_test() -> None:
 
     assert_equal(
         authorized_price["price_per_m2"],
-        "10500.00",
+        "11000.00",
         "preço atualizado com chave administrativa",
+    )
+
+    print("Verificando histórico da alteração de preço...")
+    price_history = request_json(
+        method="GET",
+        path=("/cities/3550308/valuation-prices/APARTMENT/history?limit=1&offset=0"),
+    )
+
+    latest_price_history = price_history["items"][0]
+
+    assert_equal(
+        latest_price_history["previous_price_per_m2"],
+        "10500.00",
+        "preço anterior no histórico",
+    )
+    assert_equal(
+        latest_price_history["new_price_per_m2"],
+        "11000.00",
+        "novo preço no histórico",
+    )
+    assert_equal(
+        latest_price_history["changed_by"],
+        ADMIN_ACTOR,
+        "responsável pela alteração de preço",
+    )
+
+    print("Restaurando preço-base utilizado pela avaliação...")
+    restored_price = request_json(
+        method="PATCH",
+        path="/cities/3550308/valuation-prices/APARTMENT",
+        body={
+            "price_per_m2": "10500.00",
+        },
+        additional_headers={
+            "X-Admin-API-Key": ADMIN_API_KEY,
+            "X-Admin-Actor": ADMIN_ACTOR,
+        },
+    )
+
+    assert_equal(
+        restored_price["price_per_m2"],
+        "10500.00",
+        "preço-base restaurado",
     )
 
     external_order_id = f"INTEGRATION-{uuid.uuid4().hex[:12].upper()}"
