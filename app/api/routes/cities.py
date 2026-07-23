@@ -3,19 +3,14 @@ from typing import Annotated
 from fastapi import (
     APIRouter,
     Depends,
-    Header,
     HTTPException,
     Query,
     status,
 )
 
 from app.core.admin_auth import require_admin_api_key
-from app.infrastructure.dependencies import (
-    DatabaseSession,
-)
-from app.repositories.cities_sqlalchemy import (
-    list_active_cities,
-)
+from app.infrastructure.dependencies import DatabaseSession
+from app.repositories.cities_sqlalchemy import list_active_cities
 from app.repositories.city_valuation_price_history_sqlalchemy import (
     list_city_valuation_price_history,
 )
@@ -37,18 +32,8 @@ from app.services.city_valuation_price_service import (
 
 
 AdminAuthorization = Annotated[
-    None,
-    Depends(require_admin_api_key),
-]
-
-AdminActor = Annotated[
     str,
-    Header(
-        alias="X-Admin-Actor",
-        min_length=1,
-        max_length=100,
-        description="Responsável pela alteração do preço",
-    ),
+    Depends(require_admin_api_key),
 ]
 
 
@@ -131,11 +116,8 @@ def patch_city_valuation_price(
     property_type: PropertyType,
     payload: CityValuationPriceUpdate,
     session: DatabaseSession,
-    authorization: AdminAuthorization,
-    changed_by: AdminActor,
+    changed_by: AdminAuthorization,
 ) -> CityValuationPriceResponse:
-    del authorization
-
     updated_price = update_city_valuation_price_with_history(
         session=session,
         city_ibge_code=city_ibge_code,

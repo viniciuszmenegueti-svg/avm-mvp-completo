@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -7,7 +9,6 @@ client = TestClient(app)
 
 ADMIN_HEADERS = {
     "X-Admin-API-Key": "avm-test-admin-key",
-    "X-Admin-Actor": "valuation-integration-test",
 }
 
 
@@ -36,6 +37,10 @@ def apartment_payload(
     }
 
 
+@patch(
+    "app.core.admin_auth.ADMIN_ACTOR",
+    "valuation-integration-test",
+)
 def test_updated_price_changes_valuation_result() -> None:
     update_response = client.patch(
         "/cities/3550308/valuation-prices/APARTMENT",

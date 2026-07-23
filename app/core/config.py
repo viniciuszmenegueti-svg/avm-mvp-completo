@@ -40,3 +40,8 @@ ADMIN_API_KEY = os.getenv(
     "ADMIN_API_KEY",
     "",
 )
+
+ADMIN_ACTOR = os.getenv(
+    "ADMIN_ACTOR",
+    "",
+).strip()

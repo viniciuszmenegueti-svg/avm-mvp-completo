@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import Header, HTTPException, status
 
-from app.core.config import ADMIN_API_KEY
+from app.core.config import ADMIN_ACTOR, ADMIN_API_KEY
 
 
 def require_admin_api_key(
@@ -11,7 +11,7 @@ def require_admin_api_key(
         str | None,
         Header(alias="X-Admin-API-Key"),
     ] = None,
-) -> None:
+) -> str:
     if not ADMIN_API_KEY:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -20,6 +20,18 @@ def require_admin_api_key(
                 "message": (
                     "A chave administrativa não está configurada "
                     "no ambiente da aplicação."
+                ),
+            },
+        )
+
+    if not ADMIN_ACTOR:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "code": "ADMIN_ACTOR_NOT_CONFIGURED",
+                "message": (
+                    "O responsável administrativo não está "
+                    "configurado no ambiente da aplicação."
                 ),
             },
         )
@@ -44,3 +56,5 @@ def require_admin_api_key(
                 "message": ("A chave administrativa informada é inválida."),
             },
         )
+
+    return ADMIN_ACTOR

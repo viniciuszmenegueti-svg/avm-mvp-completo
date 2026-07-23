@@ -350,7 +350,6 @@ def run_integration_test() -> None:
         expected_status=403,
         additional_headers={
             "X-Admin-API-Key": "invalid-integration-key",
-            "X-Admin-Actor": ADMIN_ACTOR,
         },
     )
 
@@ -358,25 +357,6 @@ def run_integration_test() -> None:
         invalid_key_response["detail"]["code"],
         "INVALID_ADMIN_API_KEY",
         "código de erro com chave administrativa inválida",
-    )
-
-    print("Verificando bloqueio sem responsável administrativo...")
-    missing_actor_response = request_json(
-        method="PATCH",
-        path="/cities/3550308/valuation-prices/APARTMENT",
-        body={
-            "price_per_m2": "10500.00",
-        },
-        expected_status=422,
-        additional_headers={
-            "X-Admin-API-Key": ADMIN_API_KEY,
-        },
-    )
-
-    assert_equal(
-        missing_actor_response["detail"]["errors"][0]["location"],
-        ["header", "X-Admin-Actor"],
-        "campo ausente sem responsável administrativo",
     )
 
     print("Verificando atualização com chave administrativa válida...")
@@ -388,7 +368,6 @@ def run_integration_test() -> None:
         },
         additional_headers={
             "X-Admin-API-Key": ADMIN_API_KEY,
-            "X-Admin-Actor": ADMIN_ACTOR,
         },
     )
 
@@ -431,7 +410,6 @@ def run_integration_test() -> None:
         },
         additional_headers={
             "X-Admin-API-Key": ADMIN_API_KEY,
-            "X-Admin-Actor": ADMIN_ACTOR,
         },
     )
 

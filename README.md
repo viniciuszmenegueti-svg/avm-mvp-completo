@@ -220,14 +220,13 @@ GET   /cities/{city_ibge_code}/valuation-prices/{property_type}/history
 PATCH /cities/{city_ibge_code}/valuation-prices/{property_type}
 ```
 
-A atualização do preço-base exige os seguintes cabeçalhos:
+A atualização do preço-base exige o seguinte cabeçalho:
 
 ```text
 X-Admin-API-Key: chave administrativa configurada no ambiente
-X-Admin-Actor: nome ou identificador do responsável pela alteração
 ```
 
-O campo `X-Admin-Actor` é armazenado como `changed_by` no histórico de preços.
+O responsável pela alteração é definido no servidor pela variável `ADMIN_ACTOR`. Esse valor é armazenado como `changed_by` no histórico de preços e não pode ser escolhido pelo cliente.
 
 ### Ordens de Serviço
 
