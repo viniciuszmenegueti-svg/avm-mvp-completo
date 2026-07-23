@@ -128,6 +128,7 @@ def calculate_and_store_valuation(
             valuation_id=str(uuid4()),
             internal_order_id=internal_order_id,
             method=model_version.method,
+            model_version=model_version.version,
             estimated_value=calculation.estimated_value,
             minimum_value=calculation.minimum_value,
             maximum_value=calculation.maximum_value,

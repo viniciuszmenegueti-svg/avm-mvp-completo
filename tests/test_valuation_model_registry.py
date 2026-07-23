@@ -112,6 +112,7 @@ def test_valuation_service_uses_default_registry_model() -> None:
 
     assert valuation is not None
     assert valuation.method == ValuationMethod.RULE_BASED_V1
+    assert valuation.model_version == "1.0.0-test"
     assert valuation.estimated_value == Decimal("700000.00")
 
     registry_mock.assert_called_once_with()

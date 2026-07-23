@@ -66,6 +66,7 @@ def test_creates_and_reads_valuation() -> None:
             valuation_id=valuation_id,
             internal_order_id=internal_order_id,
             method=ValuationMethod.RULE_BASED_V1,
+            model_version="1.0.0",
             estimated_value=Decimal("525000.00"),
             minimum_value=Decimal("472500.00"),
             maximum_value=Decimal("577500.00"),
@@ -78,6 +79,7 @@ def test_creates_and_reads_valuation() -> None:
     assert created_valuation.valuation_id == valuation_id
     assert created_valuation.internal_order_id == internal_order_id
     assert created_valuation.method == ValuationMethod.RULE_BASED_V1
+    assert created_valuation.model_version == "1.0.0"
     assert created_valuation.estimated_value == Decimal("525000.00")
     assert created_valuation.minimum_value == Decimal("472500.00")
     assert created_valuation.maximum_value == Decimal("577500.00")
@@ -95,6 +97,7 @@ def test_creates_and_reads_valuation() -> None:
     assert stored_valuation.valuation_id == valuation_id
     assert stored_valuation.internal_order_id == internal_order_id
     assert stored_valuation.method == ValuationMethod.RULE_BASED_V1
+    assert stored_valuation.model_version == "1.0.0"
     assert stored_valuation.estimated_value == Decimal("525000.00")
     assert stored_valuation.minimum_value == Decimal("472500.00")
     assert stored_valuation.maximum_value == Decimal("577500.00")

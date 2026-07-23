@@ -31,6 +31,11 @@ class ValuationModel(Base):
         nullable=False,
     )
 
+    model_version: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
+
     estimated_value: Mapped[Decimal] = mapped_column(
         Numeric(
             precision=18,
