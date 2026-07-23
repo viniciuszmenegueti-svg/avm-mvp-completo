@@ -17,6 +17,18 @@ class ModelStatus(StrEnum):
     DISABLED = "DISABLED"
 
 
+class ModelVersionNotFoundError(LookupError):
+    def __init__(
+        self,
+        method: object,
+    ) -> None:
+        self.method = method
+
+        super().__init__(
+            f"Modelo AVM não registrado: {method}",
+        )
+
+
 ValuationCalculator = Callable[
     [PropertyInput, Decimal],
     ValuationCalculation,
@@ -52,7 +64,10 @@ DEFAULT_MODEL_METHOD = ValuationMethod.RULE_BASED_V1
 def get_model_version(
     method: ValuationMethod,
 ) -> ModelVersion:
-    return MODEL_VERSIONS[method]
+    try:
+        return MODEL_VERSIONS[method]
+    except KeyError as error:
+        raise ModelVersionNotFoundError(method) from error
 
 
 def get_default_model_version() -> ModelVersion:

@@ -6,6 +6,7 @@ from engine.registry import (
     DEFAULT_MODEL_METHOD,
     MODEL_VERSIONS,
     ModelStatus,
+    ModelVersionNotFoundError,
     get_active_model_versions,
     get_default_model_version,
     get_model_version,
@@ -41,7 +42,21 @@ def test_rejects_unregistered_model_method() -> None:
     class UnknownMethod(str):
         pass
 
-    with pytest.raises(KeyError):
+    unknown_method = UnknownMethod("UNKNOWN_MODEL")
+
+    with pytest.raises(
+        ModelVersionNotFoundError,
+        match="Modelo AVM não registrado: UNKNOWN_MODEL",
+    ) as exception_info:
         get_model_version(
-            UnknownMethod("UNKNOWN_MODEL")  # type: ignore[arg-type]
+            unknown_method,  # type: ignore[arg-type]
         )
+
+    assert exception_info.value.method == unknown_method
+
+
+def test_model_not_found_error_is_lookup_error() -> None:
+    error = ModelVersionNotFoundError("UNKNOWN_MODEL")
+
+    assert isinstance(error, LookupError)
+    assert error.method == "UNKNOWN_MODEL"

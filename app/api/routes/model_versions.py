@@ -8,6 +8,7 @@ from app.schemas.valuation import ValuationMethod
 from engine.registry import (
     DEFAULT_MODEL_METHOD,
     ModelVersion,
+    ModelVersionNotFoundError,
     get_active_model_versions,
     get_model_version,
 )
@@ -63,7 +64,7 @@ def get_registered_model_version(
     try:
         valuation_method = ValuationMethod(method)
         model = get_model_version(valuation_method)
-    except (ValueError, KeyError) as error:
+    except (ValueError, ModelVersionNotFoundError) as error:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Modelo AVM não encontrado.",
