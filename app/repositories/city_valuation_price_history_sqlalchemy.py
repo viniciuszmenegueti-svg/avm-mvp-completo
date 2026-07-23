@@ -19,6 +19,7 @@ def create_city_valuation_price_history(
     property_type: PropertyType,
     previous_price_per_m2: Decimal,
     new_price_per_m2: Decimal,
+    changed_by: str,
     commit: bool = True,
 ) -> CityValuationPriceHistoryResponse:
     database_history = CityValuationPriceHistoryModel(
@@ -27,6 +28,7 @@ def create_city_valuation_price_history(
         property_type=property_type.value,
         previous_price_per_m2=previous_price_per_m2,
         new_price_per_m2=new_price_per_m2,
+        changed_by=changed_by,
     )
 
     session.add(database_history)

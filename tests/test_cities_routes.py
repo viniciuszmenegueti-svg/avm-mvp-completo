@@ -7,6 +7,7 @@ client = TestClient(app)
 
 ADMIN_HEADERS = {
     "X-Admin-API-Key": "avm-test-admin-key",
+    "X-Admin-Actor": "integration-test",
 }
 
 
@@ -81,6 +82,9 @@ def test_updates_city_valuation_price() -> None:
 def test_requires_admin_key_to_update_price() -> None:
     response = client.patch(
         "/cities/3550308/valuation-prices/APARTMENT",
+        headers={
+            "X-Admin-Actor": "integration-test",
+        },
         json={
             "price_per_m2": "11000.00",
         },
@@ -99,6 +103,7 @@ def test_rejects_invalid_admin_key() -> None:
         "/cities/3550308/valuation-prices/APARTMENT",
         headers={
             "X-Admin-API-Key": "invalid-key",
+            "X-Admin-Actor": "integration-test",
         },
         json={
             "price_per_m2": "11000.00",
@@ -111,6 +116,20 @@ def test_rejects_invalid_admin_key() -> None:
         "code": "INVALID_ADMIN_API_KEY",
         "message": ("A chave administrativa informada é inválida."),
     }
+
+
+def test_requires_admin_actor_to_update_price() -> None:
+    response = client.patch(
+        "/cities/3550308/valuation-prices/APARTMENT",
+        headers={
+            "X-Admin-API-Key": "avm-test-admin-key",
+        },
+        json={
+            "price_per_m2": "11000.00",
+        },
+    )
+
+    assert response.status_code == 422
 
 
 def test_records_price_change_history() -> None:
@@ -141,6 +160,7 @@ def test_records_price_change_history() -> None:
     assert history_item["property_type"] == "APARTMENT"
     assert history_item["previous_price_per_m2"] == "10500.00"
     assert history_item["new_price_per_m2"] == "11000.00"
+    assert history_item["changed_by"] == "integration-test"
 
 
 def test_paginates_price_change_history() -> None:
@@ -177,6 +197,7 @@ def test_paginates_price_change_history() -> None:
     assert history["offset"] == 1
     assert len(history["items"]) == 1
     assert history["items"][0]["new_price_per_m2"] == "11000.00"
+    assert history["items"][0]["changed_by"] == "integration-test"
 
 
 def test_does_not_record_history_when_price_is_unchanged() -> None:

@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import (
     APIRouter,
     Depends,
+    Header,
     HTTPException,
     Query,
     status,
@@ -38,6 +39,16 @@ from app.services.city_valuation_price_service import (
 AdminAuthorization = Annotated[
     None,
     Depends(require_admin_api_key),
+]
+
+AdminActor = Annotated[
+    str,
+    Header(
+        alias="X-Admin-Actor",
+        min_length=1,
+        max_length=100,
+        description="Responsável pela alteração do preço",
+    ),
 ]
 
 
@@ -121,6 +132,7 @@ def patch_city_valuation_price(
     payload: CityValuationPriceUpdate,
     session: DatabaseSession,
     authorization: AdminAuthorization,
+    changed_by: AdminActor,
 ) -> CityValuationPriceResponse:
     del authorization
 
@@ -129,6 +141,7 @@ def patch_city_valuation_price(
         city_ibge_code=city_ibge_code,
         property_type=property_type,
         price_per_m2=payload.price_per_m2,
+        changed_by=changed_by,
     )
 
     if updated_price is None:

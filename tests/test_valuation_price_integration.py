@@ -7,6 +7,7 @@ client = TestClient(app)
 
 ADMIN_HEADERS = {
     "X-Admin-API-Key": "avm-test-admin-key",
+    "X-Admin-Actor": "valuation-integration-test",
 }
 
 
@@ -76,3 +77,12 @@ def test_updated_price_changes_valuation_result() -> None:
     assert valuation["estimated_value"] == "770000.00"
     assert valuation["minimum_value"] == "693000.00"
     assert valuation["maximum_value"] == "847000.00"
+
+    history_response = client.get("/cities/3550308/valuation-prices/APARTMENT/history")
+
+    assert history_response.status_code == 200
+
+    history = history_response.json()
+
+    assert history["total"] == 1
+    assert history["items"][0]["changed_by"] == "valuation-integration-test"
