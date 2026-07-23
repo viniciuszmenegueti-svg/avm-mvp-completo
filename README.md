@@ -211,6 +211,7 @@ GET /health/ready
 ```text
 GET   /cities
 GET   /cities/{city_ibge_code}/valuation-prices
+GET   /cities/{city_ibge_code}/valuation-prices/{property_type}/history
 PATCH /cities/{city_ibge_code}/valuation-prices/{property_type}
 ```
 
