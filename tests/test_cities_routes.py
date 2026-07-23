@@ -89,12 +89,51 @@ def test_records_price_change_history() -> None:
 
     history = history_response.json()
 
-    assert len(history) == 1
+    assert history["total"] == 1
+    assert history["limit"] == 20
+    assert history["offset"] == 0
+    assert len(history["items"]) == 1
 
-    assert history[0]["city_ibge_code"] == "3550308"
-    assert history[0]["property_type"] == "APARTMENT"
-    assert history[0]["previous_price_per_m2"] == "10500.00"
-    assert history[0]["new_price_per_m2"] == "11000.00"
+    history_item = history["items"][0]
+
+    assert history_item["city_ibge_code"] == "3550308"
+    assert history_item["property_type"] == "APARTMENT"
+    assert history_item["previous_price_per_m2"] == "10500.00"
+    assert history_item["new_price_per_m2"] == "11000.00"
+
+
+def test_paginates_price_change_history() -> None:
+    first_update_response = client.patch(
+        "/cities/3550308/valuation-prices/APARTMENT",
+        json={
+            "price_per_m2": "11000.00",
+        },
+    )
+
+    assert first_update_response.status_code == 200
+
+    second_update_response = client.patch(
+        "/cities/3550308/valuation-prices/APARTMENT",
+        json={
+            "price_per_m2": "11500.00",
+        },
+    )
+
+    assert second_update_response.status_code == 200
+
+    history_response = client.get(
+        ("/cities/3550308/valuation-prices/APARTMENT/history?limit=1&offset=1")
+    )
+
+    assert history_response.status_code == 200
+
+    history = history_response.json()
+
+    assert history["total"] == 2
+    assert history["limit"] == 1
+    assert history["offset"] == 1
+    assert len(history["items"]) == 1
+    assert history["items"][0]["new_price_per_m2"] == "11000.00"
 
 
 def test_does_not_record_history_when_price_is_unchanged() -> None:
@@ -110,14 +149,24 @@ def test_does_not_record_history_when_price_is_unchanged() -> None:
     history_response = client.get("/cities/3550308/valuation-prices/APARTMENT/history")
 
     assert history_response.status_code == 200
-    assert history_response.json() == []
+    assert history_response.json() == {
+        "total": 0,
+        "limit": 20,
+        "offset": 0,
+        "items": [],
+    }
 
 
 def test_returns_empty_history_for_price_without_changes() -> None:
     response = client.get("/cities/3550308/valuation-prices/HOUSE/history")
 
     assert response.status_code == 200
-    assert response.json() == []
+    assert response.json() == {
+        "total": 0,
+        "limit": 20,
+        "offset": 0,
+        "items": [],
+    }
 
 
 def test_returns_not_found_when_updating_unknown_price() -> None:
@@ -157,6 +206,14 @@ def test_rejects_invalid_property_type() -> None:
         json={
             "price_per_m2": "11000.00",
         },
+    )
+
+    assert response.status_code == 422
+
+
+def test_rejects_invalid_history_pagination() -> None:
+    response = client.get(
+        ("/cities/3550308/valuation-prices/APARTMENT/history?limit=0&offset=-1")
     )
 
     assert response.status_code == 422

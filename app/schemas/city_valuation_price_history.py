@@ -39,3 +39,10 @@ class CityValuationPriceHistoryResponse(BaseModel):
     )
 
     changed_at: datetime
+
+
+class CityValuationPriceHistoryListResponse(BaseModel):
+    total: int = Field(ge=0)
+    limit: int = Field(ge=1, le=100)
+    offset: int = Field(ge=0)
+    items: list[CityValuationPriceHistoryResponse]

@@ -25,15 +25,18 @@ def test_updates_price_and_creates_history() -> None:
             price_per_m2=Decimal("11000.00"),
         )
 
-        history = list_city_valuation_price_history(
+        history, total = list_city_valuation_price_history(
             session=session,
             city_ibge_code="3550308",
             property_type=PropertyType.APARTMENT,
+            limit=20,
+            offset=0,
         )
 
     assert updated_price is not None
     assert updated_price.price_per_m2 == Decimal("11000.00")
 
+    assert total == 1
     assert len(history) == 1
     assert history[0].previous_price_per_m2 == Decimal("10500.00")
     assert history[0].new_price_per_m2 == Decimal("11000.00")
@@ -48,14 +51,17 @@ def test_does_not_create_history_for_unchanged_price() -> None:
             price_per_m2=Decimal("10500.00"),
         )
 
-        history = list_city_valuation_price_history(
+        history, total = list_city_valuation_price_history(
             session=session,
             city_ibge_code="3550308",
             property_type=PropertyType.APARTMENT,
+            limit=20,
+            offset=0,
         )
 
     assert updated_price is not None
     assert updated_price.price_per_m2 == Decimal("10500.00")
+    assert total == 0
     assert history == []
 
 
@@ -97,12 +103,15 @@ def test_rolls_back_price_when_history_creation_fails() -> None:
             property_type=PropertyType.APARTMENT,
         )
 
-        history = list_city_valuation_price_history(
+        history, total = list_city_valuation_price_history(
             session=session,
             city_ibge_code="3550308",
             property_type=PropertyType.APARTMENT,
+            limit=20,
+            offset=0,
         )
 
     assert current_price is not None
     assert current_price.price_per_m2 == Decimal("10500.00")
+    assert total == 0
     assert history == []

@@ -1,4 +1,9 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import (
+    APIRouter,
+    HTTPException,
+    Query,
+    status,
+)
 
 from app.infrastructure.dependencies import (
     DatabaseSession,
@@ -18,7 +23,7 @@ from app.schemas.city_valuation_price import (
     CityValuationPriceUpdate,
 )
 from app.schemas.city_valuation_price_history import (
-    CityValuationPriceHistoryResponse,
+    CityValuationPriceHistoryListResponse,
 )
 from app.schemas.property import PropertyType
 from app.services.city_valuation_price_service import (
@@ -60,18 +65,38 @@ def get_city_valuation_prices(
 
 @router.get(
     "/{city_ibge_code}/valuation-prices/{property_type}/history",
-    response_model=list[CityValuationPriceHistoryResponse],
+    response_model=CityValuationPriceHistoryListResponse,
     summary="Lista o histórico do preço-base de avaliação",
 )
 def get_city_valuation_price_history(
     city_ibge_code: str,
     property_type: PropertyType,
     session: DatabaseSession,
-) -> list[CityValuationPriceHistoryResponse]:
-    return list_city_valuation_price_history(
+    limit: int = Query(
+        default=20,
+        ge=1,
+        le=100,
+        description="Quantidade máxima de resultados",
+    ),
+    offset: int = Query(
+        default=0,
+        ge=0,
+        description="Quantidade de registros ignorados",
+    ),
+) -> CityValuationPriceHistoryListResponse:
+    history, total = list_city_valuation_price_history(
         session=session,
         city_ibge_code=city_ibge_code,
         property_type=property_type,
+        limit=limit,
+        offset=offset,
+    )
+
+    return CityValuationPriceHistoryListResponse(
+        total=total,
+        limit=limit,
+        offset=offset,
+        items=history,
     )
 
 

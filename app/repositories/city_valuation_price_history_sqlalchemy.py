@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.domain.city_valuation_price_history_model import (
@@ -44,22 +44,39 @@ def list_city_valuation_price_history(
     session: Session,
     city_ibge_code: str,
     property_type: PropertyType,
-) -> list[CityValuationPriceHistoryResponse]:
+    limit: int,
+    offset: int,
+) -> tuple[
+    list[CityValuationPriceHistoryResponse],
+    int,
+]:
+    filters = (
+        CityValuationPriceHistoryModel.city_ibge_code == city_ibge_code,
+        CityValuationPriceHistoryModel.property_type == property_type.value,
+    )
+
+    total_statement = select(func.count(CityValuationPriceHistoryModel.id)).where(
+        *filters
+    )
+
+    total = session.scalar(total_statement) or 0
+
     statement = (
         select(CityValuationPriceHistoryModel)
-        .where(
-            CityValuationPriceHistoryModel.city_ibge_code == city_ibge_code,
-            CityValuationPriceHistoryModel.property_type == property_type.value,
-        )
+        .where(*filters)
         .order_by(
             CityValuationPriceHistoryModel.changed_at.desc(),
             CityValuationPriceHistoryModel.id.desc(),
         )
+        .limit(limit)
+        .offset(offset)
     )
 
     database_history = session.scalars(statement).all()
 
-    return [
+    items = [
         CityValuationPriceHistoryResponse.model_validate(history_item)
         for history_item in database_history
     ]
+
+    return items, total

@@ -65,23 +65,70 @@ def test_lists_city_valuation_price_history() -> None:
             new_price_per_m2=Decimal("11500.00"),
         )
 
-        history = list_city_valuation_price_history(
+        history, total = list_city_valuation_price_history(
             session=session,
             city_ibge_code="3550308",
             property_type=PropertyType.APARTMENT,
+            limit=20,
+            offset=0,
         )
 
+    assert total == 2
     assert len(history) == 2
     assert history[0].new_price_per_m2 == Decimal("11500.00")
     assert history[1].new_price_per_m2 == Decimal("11000.00")
 
 
-def test_returns_empty_history_for_unknown_price() -> None:
+def test_paginates_city_valuation_price_history() -> None:
     with SessionLocal() as session:
-        history = list_city_valuation_price_history(
+        current_price = get_city_valuation_price(
             session=session,
-            city_ibge_code="3304557",
+            city_ibge_code="3550308",
             property_type=PropertyType.APARTMENT,
         )
 
+        assert current_price is not None
+
+        create_city_valuation_price_history(
+            session=session,
+            city_valuation_price_id=current_price.id,
+            city_ibge_code="3550308",
+            property_type=PropertyType.APARTMENT,
+            previous_price_per_m2=Decimal("10500.00"),
+            new_price_per_m2=Decimal("11000.00"),
+        )
+
+        create_city_valuation_price_history(
+            session=session,
+            city_valuation_price_id=current_price.id,
+            city_ibge_code="3550308",
+            property_type=PropertyType.APARTMENT,
+            previous_price_per_m2=Decimal("11000.00"),
+            new_price_per_m2=Decimal("11500.00"),
+        )
+
+        history, total = list_city_valuation_price_history(
+            session=session,
+            city_ibge_code="3550308",
+            property_type=PropertyType.APARTMENT,
+            limit=1,
+            offset=1,
+        )
+
+    assert total == 2
+    assert len(history) == 1
+    assert history[0].new_price_per_m2 == Decimal("11000.00")
+
+
+def test_returns_empty_history_for_unknown_price() -> None:
+    with SessionLocal() as session:
+        history, total = list_city_valuation_price_history(
+            session=session,
+            city_ibge_code="3304557",
+            property_type=PropertyType.APARTMENT,
+            limit=20,
+            offset=0,
+        )
+
+    assert total == 0
     assert history == []
