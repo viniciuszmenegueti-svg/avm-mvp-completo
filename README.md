@@ -210,6 +210,7 @@ GET /health/ready
 
 ```text
 GET /cities
+GET /cities/{city_ibge_code}/valuation-prices
 ```
 
 ### Ordens de Serviço
