@@ -1,10 +1,14 @@
+from typing import Annotated
+
 from fastapi import (
     APIRouter,
+    Depends,
     HTTPException,
     Query,
     status,
 )
 
+from app.core.admin_auth import require_admin_api_key
 from app.infrastructure.dependencies import (
     DatabaseSession,
 )
@@ -29,6 +33,12 @@ from app.schemas.property import PropertyType
 from app.services.city_valuation_price_service import (
     update_city_valuation_price_with_history,
 )
+
+
+AdminAuthorization = Annotated[
+    None,
+    Depends(require_admin_api_key),
+]
 
 
 router = APIRouter(
@@ -110,7 +120,10 @@ def patch_city_valuation_price(
     property_type: PropertyType,
     payload: CityValuationPriceUpdate,
     session: DatabaseSession,
+    authorization: AdminAuthorization,
 ) -> CityValuationPriceResponse:
+    del authorization
+
     updated_price = update_city_valuation_price_with_history(
         session=session,
         city_ibge_code=city_ibge_code,

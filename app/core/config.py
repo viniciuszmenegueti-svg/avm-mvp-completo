@@ -13,7 +13,7 @@ APP_VERSION = os.getenv(
 
 APP_DESCRIPTION = os.getenv(
     "APP_DESCRIPTION",
-    "Plataforma local para automação de avaliações e precificação de imóveis.",
+    ("Plataforma local para automação de avaliações e precificação de imóveis."),
 )
 
 APP_ENV = os.getenv(
@@ -35,3 +35,8 @@ LOG_LEVEL = os.getenv(
     "LOG_LEVEL",
     "INFO",
 ).upper()
+
+ADMIN_API_KEY = os.getenv(
+    "ADMIN_API_KEY",
+    "avm-local-admin-key",
+)

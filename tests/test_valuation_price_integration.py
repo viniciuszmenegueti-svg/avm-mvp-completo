@@ -5,6 +5,10 @@ from app.main import app
 
 client = TestClient(app)
 
+ADMIN_HEADERS = {
+    "X-Admin-API-Key": "avm-local-admin-key",
+}
+
 
 def apartment_payload(
     external_order_id: str,
@@ -34,6 +38,7 @@ def apartment_payload(
 def test_updated_price_changes_valuation_result() -> None:
     update_response = client.patch(
         "/cities/3550308/valuation-prices/APARTMENT",
+        headers=ADMIN_HEADERS,
         json={
             "price_per_m2": "11000.00",
         },

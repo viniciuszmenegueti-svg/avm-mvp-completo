@@ -5,6 +5,10 @@ from app.main import app
 
 client = TestClient(app)
 
+ADMIN_HEADERS = {
+    "X-Admin-API-Key": "avm-local-admin-key",
+}
+
 
 def test_lists_active_cities() -> None:
     response = client.get("/cities")
@@ -59,6 +63,7 @@ def test_returns_empty_list_for_city_without_prices() -> None:
 def test_updates_city_valuation_price() -> None:
     response = client.patch(
         "/cities/3550308/valuation-prices/APARTMENT",
+        headers=ADMIN_HEADERS,
         json={
             "price_per_m2": "11000.00",
         },
@@ -73,9 +78,45 @@ def test_updates_city_valuation_price() -> None:
     assert updated_price["price_per_m2"] == "11000.00"
 
 
+def test_requires_admin_key_to_update_price() -> None:
+    response = client.patch(
+        "/cities/3550308/valuation-prices/APARTMENT",
+        json={
+            "price_per_m2": "11000.00",
+        },
+    )
+
+    assert response.status_code == 401
+
+    assert response.json()["detail"] == {
+        "code": "ADMIN_API_KEY_REQUIRED",
+        "message": ("A chave administrativa deve ser informada."),
+    }
+
+
+def test_rejects_invalid_admin_key() -> None:
+    response = client.patch(
+        "/cities/3550308/valuation-prices/APARTMENT",
+        headers={
+            "X-Admin-API-Key": "invalid-key",
+        },
+        json={
+            "price_per_m2": "11000.00",
+        },
+    )
+
+    assert response.status_code == 403
+
+    assert response.json()["detail"] == {
+        "code": "INVALID_ADMIN_API_KEY",
+        "message": ("A chave administrativa informada é inválida."),
+    }
+
+
 def test_records_price_change_history() -> None:
     update_response = client.patch(
         "/cities/3550308/valuation-prices/APARTMENT",
+        headers=ADMIN_HEADERS,
         json={
             "price_per_m2": "11000.00",
         },
@@ -105,6 +146,7 @@ def test_records_price_change_history() -> None:
 def test_paginates_price_change_history() -> None:
     first_update_response = client.patch(
         "/cities/3550308/valuation-prices/APARTMENT",
+        headers=ADMIN_HEADERS,
         json={
             "price_per_m2": "11000.00",
         },
@@ -114,6 +156,7 @@ def test_paginates_price_change_history() -> None:
 
     second_update_response = client.patch(
         "/cities/3550308/valuation-prices/APARTMENT",
+        headers=ADMIN_HEADERS,
         json={
             "price_per_m2": "11500.00",
         },
@@ -139,6 +182,7 @@ def test_paginates_price_change_history() -> None:
 def test_does_not_record_history_when_price_is_unchanged() -> None:
     update_response = client.patch(
         "/cities/3550308/valuation-prices/APARTMENT",
+        headers=ADMIN_HEADERS,
         json={
             "price_per_m2": "10500.00",
         },
@@ -172,6 +216,7 @@ def test_returns_empty_history_for_price_without_changes() -> None:
 def test_returns_not_found_when_updating_unknown_price() -> None:
     response = client.patch(
         "/cities/3304557/valuation-prices/APARTMENT",
+        headers=ADMIN_HEADERS,
         json={
             "price_per_m2": "11000.00",
         },
@@ -192,6 +237,7 @@ def test_returns_not_found_when_updating_unknown_price() -> None:
 def test_rejects_invalid_price_per_m2() -> None:
     response = client.patch(
         "/cities/3550308/valuation-prices/APARTMENT",
+        headers=ADMIN_HEADERS,
         json={
             "price_per_m2": "0.00",
         },
@@ -203,6 +249,7 @@ def test_rejects_invalid_price_per_m2() -> None:
 def test_rejects_invalid_property_type() -> None:
     response = client.patch(
         "/cities/3550308/valuation-prices/COMMERCIAL",
+        headers=ADMIN_HEADERS,
         json={
             "price_per_m2": "11000.00",
         },
