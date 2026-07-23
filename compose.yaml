@@ -34,8 +34,9 @@
       APP_ENV: ${APP_ENV:-development}
       APP_DEBUG: ${APP_DEBUG:-false}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      ADMIN_API_KEY: ${ADMIN_API_KEY}
-      ADMIN_ACTOR: ${ADMIN_ACTOR}
+      ADMIN_CREDENTIALS_JSON: ${ADMIN_CREDENTIALS_JSON:-}
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-}
+      ADMIN_ACTOR: ${ADMIN_ACTOR:-}
     ports:
       - "8000:8000"
     depends_on:

@@ -13,6 +13,8 @@ os.environ["APP_VERSION"] = "0.2.0-dev"
 os.environ["APP_ENV"] = "test"
 os.environ["APP_DEBUG"] = "false"
 os.environ["LOG_LEVEL"] = "INFO"
+
+os.environ["ADMIN_CREDENTIALS_JSON"] = ""
 os.environ["ADMIN_API_KEY"] = "avm-test-admin-key"
 os.environ["ADMIN_ACTOR"] = "avm-test-admin"
 

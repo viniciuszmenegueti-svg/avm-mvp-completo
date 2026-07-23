@@ -36,6 +36,11 @@ LOG_LEVEL = os.getenv(
     "INFO",
 ).upper()
 
+ADMIN_CREDENTIALS_JSON = os.getenv(
+    "ADMIN_CREDENTIALS_JSON",
+    "",
+).strip()
+
 ADMIN_API_KEY = os.getenv(
     "ADMIN_API_KEY",
     "",
