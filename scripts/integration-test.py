@@ -28,6 +28,11 @@ EXPECTED_APP_ENV = os.getenv(
     "development",
 )
 
+ADMIN_API_KEY = os.getenv(
+    "ADMIN_API_KEY",
+    "",
+)
+
 MAX_READY_ATTEMPTS = 30
 READY_INTERVAL_SECONDS = 2
 
@@ -37,12 +42,16 @@ def request_json(
     path: str,
     body: dict[str, Any] | None = None,
     expected_status: int = 200,
+    additional_headers: dict[str, str] | None = None,
 ) -> Any:
     data = None
     headers = {
         "Accept": "application/json",
         "X-Request-ID": f"integration-test-{uuid.uuid4()}",
     }
+
+    if additional_headers is not None:
+        headers.update(additional_headers)
 
     if body is not None:
         data = json.dumps(
@@ -305,6 +314,62 @@ def run_integration_test() -> None:
         len(cities),
         10,
         "quantidade de cidades",
+    )
+
+    if not ADMIN_API_KEY:
+        raise RuntimeError("A variável ADMIN_API_KEY não foi definida.")
+
+    print("Verificando bloqueio sem chave administrativa...")
+    missing_key_response = request_json(
+        method="PATCH",
+        path="/cities/3550308/valuation-prices/APARTMENT",
+        body={
+            "price_per_m2": "10500.00",
+        },
+        expected_status=401,
+    )
+
+    assert_equal(
+        missing_key_response["detail"]["code"],
+        "ADMIN_API_KEY_REQUIRED",
+        "código de erro sem chave administrativa",
+    )
+
+    print("Verificando bloqueio com chave administrativa inválida...")
+    invalid_key_response = request_json(
+        method="PATCH",
+        path="/cities/3550308/valuation-prices/APARTMENT",
+        body={
+            "price_per_m2": "10500.00",
+        },
+        expected_status=403,
+        additional_headers={
+            "X-Admin-API-Key": "invalid-integration-key",
+        },
+    )
+
+    assert_equal(
+        invalid_key_response["detail"]["code"],
+        "INVALID_ADMIN_API_KEY",
+        "código de erro com chave administrativa inválida",
+    )
+
+    print("Verificando atualização com chave administrativa válida...")
+    authorized_price = request_json(
+        method="PATCH",
+        path="/cities/3550308/valuation-prices/APARTMENT",
+        body={
+            "price_per_m2": "10500.00",
+        },
+        additional_headers={
+            "X-Admin-API-Key": ADMIN_API_KEY,
+        },
+    )
+
+    assert_equal(
+        authorized_price["price_per_m2"],
+        "10500.00",
+        "preço atualizado com chave administrativa",
     )
 
     external_order_id = f"INTEGRATION-{uuid.uuid4().hex[:12].upper()}"
