@@ -29,6 +29,23 @@ class ModelVersionNotFoundError(LookupError):
         )
 
 
+class ModelVersionNotActiveError(RuntimeError):
+    def __init__(
+        self,
+        method: ValuationMethod,
+        model_status: ModelStatus,
+    ) -> None:
+        self.method = method
+        self.model_status = model_status
+
+        super().__init__(
+            (
+                f"Modelo AVM não está ativo: {method.value}. "
+                f"Status atual: {model_status.value}."
+            )
+        )
+
+
 ValuationCalculator = Callable[
     [PropertyInput, Decimal],
     ValuationCalculation,
@@ -72,6 +89,20 @@ def get_model_version(
 
 def get_default_model_version() -> ModelVersion:
     return get_model_version(DEFAULT_MODEL_METHOD)
+
+
+def get_active_model_version(
+    method: ValuationMethod,
+) -> ModelVersion:
+    model = get_model_version(method)
+
+    if model.status != ModelStatus.ACTIVE:
+        raise ModelVersionNotActiveError(
+            method=model.method,
+            model_status=model.status,
+        )
+
+    return model
 
 
 def get_active_model_versions() -> list[ModelVersion]:
