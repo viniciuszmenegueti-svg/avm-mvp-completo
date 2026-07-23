@@ -37,6 +37,10 @@ API para recebimento, validação, processamento e avaliação automatizada de i
 - Cálculo do valor por metro quadrado
 - Índice de confiança da avaliação
 - Idempotência no cálculo da avaliação
+- Configuração de preços-base por cidade e tipologia
+- Atualização de preços protegida por chave administrativa
+- Histórico de alterações de preços
+- Identificação do responsável por cada alteração de preço
 - Transações atômicas no banco de dados
 - Healthchecks de vida e prontidão
 - Request ID por requisição
@@ -215,6 +219,15 @@ GET   /cities/{city_ibge_code}/valuation-prices
 GET   /cities/{city_ibge_code}/valuation-prices/{property_type}/history
 PATCH /cities/{city_ibge_code}/valuation-prices/{property_type}
 ```
+
+A atualização do preço-base exige os seguintes cabeçalhos:
+
+```text
+X-Admin-API-Key: chave administrativa configurada no ambiente
+X-Admin-Actor: nome ou identificador do responsável pela alteração
+```
+
+O campo `X-Admin-Actor` é armazenado como `changed_by` no histórico de preços.
 
 ### Ordens de Serviço
 
@@ -406,6 +419,10 @@ O teste valida:
 
 - Healthchecks
 - Lista de cidades
+- Bloqueio de atualização sem chave administrativa
+- Bloqueio de atualização com chave inválida
+- Bloqueio de atualização sem responsável administrativo
+- Atualização autorizada de preço-base
 - Criação da ordem
 - Consulta por identificador externo
 - Atualização para `VALIDATING_INPUT`
