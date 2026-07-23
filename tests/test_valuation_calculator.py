@@ -6,7 +6,6 @@ from app.schemas.property import PropertyInput
 from app.services.valuation_calculator import (
     calculate_confidence_score,
     calculate_valuation,
-    get_base_price_per_m2,
     get_reference_area,
 )
 
@@ -63,7 +62,10 @@ def land_property() -> PropertyInput:
 
 
 def test_calculates_apartment_valuation() -> None:
-    calculation = calculate_valuation(apartment_property())
+    calculation = calculate_valuation(
+        property_data=apartment_property(),
+        price_per_m2=Decimal("10500.00"),
+    )
 
     assert calculation.method == "RULE_BASED_V1"
     assert calculation.reference_area_m2 == Decimal("70.00")
@@ -79,15 +81,11 @@ def test_uses_built_area_for_house() -> None:
 
     assert get_reference_area(property_data) == Decimal("120.00")
 
-    assert get_base_price_per_m2(property_data) == Decimal("7800.00")
-
 
 def test_uses_land_area_for_land() -> None:
     property_data = land_property()
 
     assert get_reference_area(property_data) == Decimal("400.00")
-
-    assert get_base_price_per_m2(property_data) == Decimal("5200.00")
 
 
 def test_confidence_score_uses_completed_optional_fields() -> None:
@@ -96,15 +94,15 @@ def test_confidence_score_uses_completed_optional_fields() -> None:
     assert calculate_confidence_score(property_data) == Decimal("0.6000")
 
 
-def test_rejects_city_without_base_price() -> None:
-    property_data = apartment_property()
-    property_data.city_ibge_code = "3205309"
-
+def test_rejects_non_positive_price_per_m2() -> None:
     with pytest.raises(
         ValueError,
-        match="Não existe preço-base configurado para a cidade",
+        match="O preço por metro quadrado deve ser maior que zero",
     ):
-        get_base_price_per_m2(property_data)
+        calculate_valuation(
+            property_data=apartment_property(),
+            price_per_m2=Decimal("0.00"),
+        )
 
 
 def test_rejects_property_without_reference_area() -> None:

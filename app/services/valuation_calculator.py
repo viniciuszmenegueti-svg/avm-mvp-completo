@@ -12,63 +12,6 @@ MINIMUM_FACTOR = Decimal("0.90")
 MAXIMUM_FACTOR = Decimal("1.10")
 
 
-BASE_PRICE_PER_M2: dict[
-    str,
-    dict[PropertyType, Decimal],
-] = {
-    "3304557": {
-        PropertyType.APARTMENT: Decimal("9500.00"),
-        PropertyType.HOUSE: Decimal("7200.00"),
-        PropertyType.LAND: Decimal("4800.00"),
-    },
-    "3550308": {
-        PropertyType.APARTMENT: Decimal("10500.00"),
-        PropertyType.HOUSE: Decimal("7800.00"),
-        PropertyType.LAND: Decimal("5200.00"),
-    },
-    "5300108": {
-        PropertyType.APARTMENT: Decimal("8200.00"),
-        PropertyType.HOUSE: Decimal("6500.00"),
-        PropertyType.LAND: Decimal("4000.00"),
-    },
-    "2927408": {
-        PropertyType.APARTMENT: Decimal("6800.00"),
-        PropertyType.HOUSE: Decimal("5200.00"),
-        PropertyType.LAND: Decimal("3200.00"),
-    },
-    "3106200": {
-        PropertyType.APARTMENT: Decimal("7600.00"),
-        PropertyType.HOUSE: Decimal("5900.00"),
-        PropertyType.LAND: Decimal("3600.00"),
-    },
-    "4106902": {
-        PropertyType.APARTMENT: Decimal("7900.00"),
-        PropertyType.HOUSE: Decimal("6100.00"),
-        PropertyType.LAND: Decimal("3800.00"),
-    },
-    "2611606": {
-        PropertyType.APARTMENT: Decimal("6500.00"),
-        PropertyType.HOUSE: Decimal("5000.00"),
-        PropertyType.LAND: Decimal("3100.00"),
-    },
-    "2304400": {
-        PropertyType.APARTMENT: Decimal("6400.00"),
-        PropertyType.HOUSE: Decimal("4900.00"),
-        PropertyType.LAND: Decimal("3000.00"),
-    },
-    "5208707": {
-        PropertyType.APARTMENT: Decimal("6100.00"),
-        PropertyType.HOUSE: Decimal("4700.00"),
-        PropertyType.LAND: Decimal("2900.00"),
-    },
-    "4314902": {
-        PropertyType.APARTMENT: Decimal("7000.00"),
-        PropertyType.HOUSE: Decimal("5400.00"),
-        PropertyType.LAND: Decimal("3300.00"),
-    },
-}
-
-
 @dataclass(frozen=True)
 class ValuationCalculation:
     method: ValuationMethod
@@ -108,17 +51,6 @@ def get_reference_area(
     )
 
 
-def get_base_price_per_m2(
-    property_data: PropertyInput,
-) -> Decimal:
-    city_prices = BASE_PRICE_PER_M2.get(property_data.city_ibge_code)
-
-    if city_prices is None:
-        raise ValueError("Não existe preço-base configurado para a cidade.")
-
-    return city_prices[property_data.property_type]
-
-
 def calculate_confidence_score(
     property_data: PropertyInput,
 ) -> Decimal:
@@ -146,12 +78,16 @@ def calculate_confidence_score(
 
 def calculate_valuation(
     property_data: PropertyInput,
+    price_per_m2: Decimal,
 ) -> ValuationCalculation:
+    if price_per_m2 <= 0:
+        raise ValueError("O preço por metro quadrado deve ser maior que zero.")
+
     reference_area_m2 = get_reference_area(property_data)
 
-    price_per_m2 = get_base_price_per_m2(property_data)
+    normalized_price_per_m2 = quantize_money(price_per_m2)
 
-    estimated_value = quantize_money(reference_area_m2 * price_per_m2)
+    estimated_value = quantize_money(reference_area_m2 * normalized_price_per_m2)
 
     minimum_value = quantize_money(estimated_value * MINIMUM_FACTOR)
 
@@ -164,7 +100,7 @@ def calculate_valuation(
         estimated_value=estimated_value,
         minimum_value=minimum_value,
         maximum_value=maximum_value,
-        price_per_m2=price_per_m2,
+        price_per_m2=normalized_price_per_m2,
         reference_area_m2=reference_area_m2,
         confidence_score=confidence_score,
     )

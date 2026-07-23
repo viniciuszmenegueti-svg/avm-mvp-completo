@@ -3,6 +3,9 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
+from app.repositories.city_valuation_prices_sqlalchemy import (
+    get_city_valuation_price,
+)
 from app.repositories.order_status_history_sqlalchemy import (
     create_order_status_history,
 )
@@ -49,7 +52,19 @@ def calculate_and_store_valuation(
         new_status=OrderStatus.COMPLETED,
     )
 
-    calculation = calculate_valuation(order.property)
+    city_price = get_city_valuation_price(
+        session=session,
+        city_ibge_code=order.property.city_ibge_code,
+        property_type=order.property.property_type,
+    )
+
+    if city_price is None:
+        raise ValueError("Não existe preço-base configurado para a cidade e tipologia.")
+
+    calculation = calculate_valuation(
+        property_data=order.property,
+        price_per_m2=city_price.price_per_m2,
+    )
 
     try:
         valuation = create_valuation(
