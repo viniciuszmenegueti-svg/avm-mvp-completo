@@ -4,6 +4,7 @@ from app.infrastructure.database import SessionLocal
 from app.repositories.city_valuation_prices_sqlalchemy import (
     get_city_valuation_price,
     list_city_valuation_prices,
+    update_city_valuation_price,
 )
 from app.schemas.property import PropertyType
 
@@ -63,3 +64,30 @@ def test_returns_empty_list_for_city_without_prices() -> None:
         )
 
     assert prices == []
+
+
+def test_updates_city_valuation_price() -> None:
+    with SessionLocal() as session:
+        updated_price = update_city_valuation_price(
+            session=session,
+            city_ibge_code="3550308",
+            property_type=PropertyType.APARTMENT,
+            price_per_m2=Decimal("11000.00"),
+        )
+
+    assert updated_price is not None
+    assert updated_price.city_ibge_code == "3550308"
+    assert updated_price.property_type == PropertyType.APARTMENT
+    assert updated_price.price_per_m2 == Decimal("11000.00")
+
+
+def test_returns_none_when_updating_unknown_price() -> None:
+    with SessionLocal() as session:
+        updated_price = update_city_valuation_price(
+            session=session,
+            city_ibge_code="3205309",
+            property_type=PropertyType.APARTMENT,
+            price_per_m2=Decimal("11000.00"),
+        )
+
+    assert updated_price is None

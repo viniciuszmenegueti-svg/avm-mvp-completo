@@ -54,3 +54,62 @@ def test_returns_empty_list_for_city_without_prices() -> None:
 
     assert response.status_code == 200
     assert response.json() == []
+
+
+def test_updates_city_valuation_price() -> None:
+    response = client.patch(
+        "/cities/3550308/valuation-prices/APARTMENT",
+        json={
+            "price_per_m2": "11000.00",
+        },
+    )
+
+    assert response.status_code == 200
+
+    updated_price = response.json()
+
+    assert updated_price["city_ibge_code"] == "3550308"
+    assert updated_price["property_type"] == "APARTMENT"
+    assert updated_price["price_per_m2"] == "11000.00"
+
+
+def test_returns_not_found_when_updating_unknown_price() -> None:
+    response = client.patch(
+        "/cities/3304557/valuation-prices/APARTMENT",
+        json={
+            "price_per_m2": "11000.00",
+        },
+    )
+
+    assert response.status_code == 404
+
+    assert response.json()["detail"] == {
+        "code": "CITY_VALUATION_PRICE_NOT_FOUND",
+        "message": (
+            "Não existe preço-base configurado para a cidade e tipologia informadas."
+        ),
+        "city_ibge_code": "3304557",
+        "property_type": "APARTMENT",
+    }
+
+
+def test_rejects_invalid_price_per_m2() -> None:
+    response = client.patch(
+        "/cities/3550308/valuation-prices/APARTMENT",
+        json={
+            "price_per_m2": "0.00",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_rejects_invalid_property_type() -> None:
+    response = client.patch(
+        "/cities/3550308/valuation-prices/COMMERCIAL",
+        json={
+            "price_per_m2": "11000.00",
+        },
+    )
+
+    assert response.status_code == 422

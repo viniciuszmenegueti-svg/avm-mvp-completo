@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, status
 
 from app.infrastructure.dependencies import (
     DatabaseSession,
@@ -8,11 +8,14 @@ from app.repositories.cities_sqlalchemy import (
 )
 from app.repositories.city_valuation_prices_sqlalchemy import (
     list_city_valuation_prices,
+    update_city_valuation_price,
 )
 from app.schemas.city import CityResponse
 from app.schemas.city_valuation_price import (
     CityValuationPriceResponse,
+    CityValuationPriceUpdate,
 )
+from app.schemas.property import PropertyType
 
 
 router = APIRouter(
@@ -45,3 +48,38 @@ def get_city_valuation_prices(
         session=session,
         city_ibge_code=city_ibge_code,
     )
+
+
+@router.patch(
+    "/{city_ibge_code}/valuation-prices/{property_type}",
+    response_model=CityValuationPriceResponse,
+    summary="Atualiza o preço-base de avaliação",
+)
+def patch_city_valuation_price(
+    city_ibge_code: str,
+    property_type: PropertyType,
+    payload: CityValuationPriceUpdate,
+    session: DatabaseSession,
+) -> CityValuationPriceResponse:
+    updated_price = update_city_valuation_price(
+        session=session,
+        city_ibge_code=city_ibge_code,
+        property_type=property_type,
+        price_per_m2=payload.price_per_m2,
+    )
+
+    if updated_price is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "CITY_VALUATION_PRICE_NOT_FOUND",
+                "message": (
+                    "Não existe preço-base configurado para "
+                    "a cidade e tipologia informadas."
+                ),
+                "city_ibge_code": city_ibge_code,
+                "property_type": property_type.value,
+            },
+        )
+
+    return updated_price

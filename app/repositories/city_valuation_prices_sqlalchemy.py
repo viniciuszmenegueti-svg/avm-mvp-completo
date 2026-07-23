@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -44,3 +46,27 @@ def list_city_valuation_prices(
         CityValuationPriceResponse.model_validate(database_price)
         for database_price in database_prices
     ]
+
+
+def update_city_valuation_price(
+    session: Session,
+    city_ibge_code: str,
+    property_type: PropertyType,
+    price_per_m2: Decimal,
+) -> CityValuationPriceResponse | None:
+    statement = select(CityValuationPriceModel).where(
+        CityValuationPriceModel.city_ibge_code == city_ibge_code,
+        CityValuationPriceModel.property_type == property_type.value,
+    )
+
+    database_price = session.scalar(statement)
+
+    if database_price is None:
+        return None
+
+    database_price.price_per_m2 = price_per_m2
+
+    session.commit()
+    session.refresh(database_price)
+
+    return CityValuationPriceResponse.model_validate(database_price)
