@@ -31,8 +31,35 @@ def test_returns_rule_based_v1_model_metadata() -> None:
     assert model["description"]
 
 
-def test_models_endpoint_is_available_in_openapi() -> None:
+def test_gets_registered_model_by_method() -> None:
+    response = client.get("/models/RULE_BASED_V1")
+
+    assert response.status_code == 200
+
+    model = response.json()
+
+    assert model["method"] == "RULE_BASED_V1"
+    assert model["version"] == "1.0.0"
+    assert model["status"] == "ACTIVE"
+    assert model["is_default"] is True
+    assert model["description"]
+
+
+def test_returns_not_found_for_unknown_model() -> None:
+    response = client.get("/models/UNKNOWN_MODEL")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": "Modelo AVM não encontrado.",
+    }
+
+
+def test_models_endpoints_are_available_in_openapi() -> None:
     response = client.get("/openapi.json")
 
     assert response.status_code == 200
-    assert "/models" in response.json()["paths"]
+
+    paths = response.json()["paths"]
+
+    assert "/models" in paths
+    assert "/models/{method}" in paths
