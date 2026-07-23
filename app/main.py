@@ -6,6 +6,9 @@ from starlette.types import ExceptionHandler
 
 from app.api.routes.cities import router as cities_router
 from app.api.routes.health import router as health_router
+from app.api.routes.order_refusals import (
+    router as order_refusals_router,
+)
 from app.api.routes.order_status_history import (
     router as order_status_history_router,
 )
@@ -71,5 +74,6 @@ def root() -> dict[str, str]:
 app.include_router(health_router)
 app.include_router(orders_router)
 app.include_router(valuations_router)
+app.include_router(order_refusals_router)
 app.include_router(order_status_history_router)
 app.include_router(cities_router)

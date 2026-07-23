@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class OrderRefusalReason(StrEnum):
@@ -36,11 +36,17 @@ class OrderRefusalCreate(BaseModel):
 
 
 class OrderRefusalResponse(OrderRefusalCreate):
+    model_config = ConfigDict(from_attributes=True)
+
     refusal_id: str = Field(
+        min_length=36,
+        max_length=36,
         description="Identificador interno da recusa",
         examples=["550e8400-e29b-41d4-a716-446655440000"],
     )
     internal_order_id: str = Field(
+        min_length=36,
+        max_length=36,
         description="Identificador interno da Ordem de Serviço",
         examples=["550e8400-e29b-41d4-a716-446655440001"],
     )
