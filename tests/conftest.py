@@ -12,6 +12,7 @@ os.environ["APP_VERSION"] = "0.1.0"
 os.environ["APP_ENV"] = "test"
 os.environ["APP_DEBUG"] = "false"
 os.environ["LOG_LEVEL"] = "INFO"
+os.environ["ADMIN_API_KEY"] = "avm-test-admin-key"
 
 from app.domain.city_model import CityModel
 from app.domain.city_valuation_price_history_model import (

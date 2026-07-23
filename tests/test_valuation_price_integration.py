@@ -6,7 +6,7 @@ from app.main import app
 client = TestClient(app)
 
 ADMIN_HEADERS = {
-    "X-Admin-API-Key": "avm-local-admin-key",
+    "X-Admin-API-Key": "avm-test-admin-key",
 }
 
 
