@@ -1,4 +1,5 @@
 import os
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -8,11 +9,12 @@ TEST_DATABASE_FILE = Path(__file__).resolve().parent / "test_avm.db"
 
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DATABASE_FILE.as_posix()}"
 os.environ["APP_NAME"] = "AVM Imóveis API"
-os.environ["APP_VERSION"] = "0.1.0"
+os.environ["APP_VERSION"] = "0.2.0-dev"
 os.environ["APP_ENV"] = "test"
 os.environ["APP_DEBUG"] = "false"
 os.environ["LOG_LEVEL"] = "INFO"
 os.environ["ADMIN_API_KEY"] = "avm-test-admin-key"
+os.environ["ADMIN_ACTOR"] = "avm-test-admin"
 
 from app.domain.city_model import CityModel
 from app.domain.city_valuation_price_history_model import (
@@ -118,7 +120,7 @@ Base.metadata.create_all(bind=engine)
 
 
 @pytest.fixture(autouse=True)
-def prepare_test_database():
+def prepare_test_database() -> Generator[None]:
     with SessionLocal() as session:
         session.execute(delete(CityValuationPriceHistoryModel))
         session.execute(delete(ValuationModel))
@@ -150,7 +152,13 @@ def prepare_test_database():
         session.commit()
 
 
-def pytest_sessionfinish(session, exitstatus) -> None:
+def pytest_sessionfinish(
+    session: pytest.Session,
+    exitstatus: int,
+) -> None:
+    del session
+    del exitstatus
+
     engine.dispose()
 
     if TEST_DATABASE_FILE.exists():
