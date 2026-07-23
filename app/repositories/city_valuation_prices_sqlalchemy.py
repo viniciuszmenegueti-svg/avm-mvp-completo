@@ -53,6 +53,7 @@ def update_city_valuation_price(
     city_ibge_code: str,
     property_type: PropertyType,
     price_per_m2: Decimal,
+    commit: bool = True,
 ) -> CityValuationPriceResponse | None:
     statement = select(CityValuationPriceModel).where(
         CityValuationPriceModel.city_ibge_code == city_ibge_code,
@@ -66,7 +67,10 @@ def update_city_valuation_price(
 
     database_price.price_per_m2 = price_per_m2
 
-    session.commit()
-    session.refresh(database_price)
+    if commit:
+        session.commit()
+        session.refresh(database_price)
+    else:
+        session.flush()
 
     return CityValuationPriceResponse.model_validate(database_price)

@@ -73,6 +73,53 @@ def test_updates_city_valuation_price() -> None:
     assert updated_price["price_per_m2"] == "11000.00"
 
 
+def test_records_price_change_history() -> None:
+    update_response = client.patch(
+        "/cities/3550308/valuation-prices/APARTMENT",
+        json={
+            "price_per_m2": "11000.00",
+        },
+    )
+
+    assert update_response.status_code == 200
+
+    history_response = client.get("/cities/3550308/valuation-prices/APARTMENT/history")
+
+    assert history_response.status_code == 200
+
+    history = history_response.json()
+
+    assert len(history) == 1
+
+    assert history[0]["city_ibge_code"] == "3550308"
+    assert history[0]["property_type"] == "APARTMENT"
+    assert history[0]["previous_price_per_m2"] == "10500.00"
+    assert history[0]["new_price_per_m2"] == "11000.00"
+
+
+def test_does_not_record_history_when_price_is_unchanged() -> None:
+    update_response = client.patch(
+        "/cities/3550308/valuation-prices/APARTMENT",
+        json={
+            "price_per_m2": "10500.00",
+        },
+    )
+
+    assert update_response.status_code == 200
+
+    history_response = client.get("/cities/3550308/valuation-prices/APARTMENT/history")
+
+    assert history_response.status_code == 200
+    assert history_response.json() == []
+
+
+def test_returns_empty_history_for_price_without_changes() -> None:
+    response = client.get("/cities/3550308/valuation-prices/HOUSE/history")
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
 def test_returns_not_found_when_updating_unknown_price() -> None:
     response = client.patch(
         "/cities/3304557/valuation-prices/APARTMENT",

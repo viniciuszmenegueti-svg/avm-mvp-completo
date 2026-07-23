@@ -6,16 +6,24 @@ from app.infrastructure.dependencies import (
 from app.repositories.cities_sqlalchemy import (
     list_active_cities,
 )
+from app.repositories.city_valuation_price_history_sqlalchemy import (
+    list_city_valuation_price_history,
+)
 from app.repositories.city_valuation_prices_sqlalchemy import (
     list_city_valuation_prices,
-    update_city_valuation_price,
 )
 from app.schemas.city import CityResponse
 from app.schemas.city_valuation_price import (
     CityValuationPriceResponse,
     CityValuationPriceUpdate,
 )
+from app.schemas.city_valuation_price_history import (
+    CityValuationPriceHistoryResponse,
+)
 from app.schemas.property import PropertyType
+from app.services.city_valuation_price_service import (
+    update_city_valuation_price_with_history,
+)
 
 
 router = APIRouter(
@@ -50,6 +58,23 @@ def get_city_valuation_prices(
     )
 
 
+@router.get(
+    "/{city_ibge_code}/valuation-prices/{property_type}/history",
+    response_model=list[CityValuationPriceHistoryResponse],
+    summary="Lista o histórico do preço-base de avaliação",
+)
+def get_city_valuation_price_history(
+    city_ibge_code: str,
+    property_type: PropertyType,
+    session: DatabaseSession,
+) -> list[CityValuationPriceHistoryResponse]:
+    return list_city_valuation_price_history(
+        session=session,
+        city_ibge_code=city_ibge_code,
+        property_type=property_type,
+    )
+
+
 @router.patch(
     "/{city_ibge_code}/valuation-prices/{property_type}",
     response_model=CityValuationPriceResponse,
@@ -61,7 +86,7 @@ def patch_city_valuation_price(
     payload: CityValuationPriceUpdate,
     session: DatabaseSession,
 ) -> CityValuationPriceResponse:
-    updated_price = update_city_valuation_price(
+    updated_price = update_city_valuation_price_with_history(
         session=session,
         city_ibge_code=city_ibge_code,
         property_type=property_type,

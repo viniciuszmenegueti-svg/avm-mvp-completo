@@ -14,6 +14,9 @@ os.environ["APP_DEBUG"] = "false"
 os.environ["LOG_LEVEL"] = "INFO"
 
 from app.domain.city_model import CityModel
+from app.domain.city_valuation_price_history_model import (
+    CityValuationPriceHistoryModel,
+)
 from app.domain.city_valuation_price_model import (
     CityValuationPriceModel,
 )
@@ -92,7 +95,6 @@ TEST_CITIES_DATA = [
     },
 ]
 
-
 TEST_CITY_VALUATION_PRICES_DATA = [
     {
         "city_ibge_code": "3550308",
@@ -111,13 +113,13 @@ TEST_CITY_VALUATION_PRICES_DATA = [
     },
 ]
 
-
 Base.metadata.create_all(bind=engine)
 
 
 @pytest.fixture(autouse=True)
 def prepare_test_database():
     with SessionLocal() as session:
+        session.execute(delete(CityValuationPriceHistoryModel))
         session.execute(delete(ValuationModel))
         session.execute(delete(OrderStatusHistoryModel))
         session.execute(delete(OrderModel))
@@ -129,7 +131,7 @@ def prepare_test_database():
         session.add_all(
             [
                 CityValuationPriceModel(**price_data)
-                for price_data in TEST_CITY_VALUATION_PRICES_DATA
+                for price_data in (TEST_CITY_VALUATION_PRICES_DATA)
             ]
         )
 
@@ -138,6 +140,7 @@ def prepare_test_database():
     yield
 
     with SessionLocal() as session:
+        session.execute(delete(CityValuationPriceHistoryModel))
         session.execute(delete(ValuationModel))
         session.execute(delete(OrderStatusHistoryModel))
         session.execute(delete(OrderModel))
@@ -146,10 +149,7 @@ def prepare_test_database():
         session.commit()
 
 
-def pytest_sessionfinish(
-    session,
-    exitstatus,
-) -> None:
+def pytest_sessionfinish(session, exitstatus) -> None:
     engine.dispose()
 
     if TEST_DATABASE_FILE.exists():
