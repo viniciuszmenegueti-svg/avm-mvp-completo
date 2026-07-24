@@ -124,7 +124,7 @@ Exemplo de configuração:
 
 ```env
 APP_NAME=AVM Imoveis API
-APP_VERSION=0.2.0-dev
+APP_VERSION=0.2.0
 APP_ENV=development
 APP_DEBUG=false
 LOG_LEVEL=INFO

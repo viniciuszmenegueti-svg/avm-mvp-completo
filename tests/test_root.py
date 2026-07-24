@@ -13,7 +13,7 @@ def test_root_endpoint() -> None:
     assert response.json() == {
         "message": "AVM Imóveis API em execução",
         "name": "AVM Imóveis API",
-        "version": "0.2.0-dev",
+        "version": "0.2.0",
         "status": "running",
         "documentation": "/docs",
     }

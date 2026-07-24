@@ -22,7 +22,7 @@ EXPECTED_APP_NAME = os.getenv(
 
 EXPECTED_APP_VERSION = os.getenv(
     "APP_VERSION",
-    "0.2.0-dev",
+    "0.2.0",
 )
 
 EXPECTED_APP_ENV = os.getenv(
