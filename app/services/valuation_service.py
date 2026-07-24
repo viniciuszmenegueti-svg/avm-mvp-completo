@@ -29,7 +29,10 @@ from app.schemas.valuation import ValuationResponse
 from app.services.order_status import (
     validate_order_status_transition,
 )
-from engine.registry import get_default_model_version
+from engine.registry import (
+    DEFAULT_MODEL_METHOD,
+    get_active_model_version,
+)
 
 
 def calculate_and_store_valuation(
@@ -54,7 +57,7 @@ def calculate_and_store_valuation(
 
     city_price = get_city_valuation_price(
         session=session,
-        city_ibge_code=order.property.city_ibge_code,
+        city_ibge_code=(order.property.city_ibge_code),
         property_type=order.property.property_type,
     )
 
@@ -65,11 +68,11 @@ def calculate_and_store_valuation(
         )
 
         refusal = OrderRefusalCreate(
-            reason_code=OrderRefusalReason.MISSING_BASE_PRICE,
+            reason_code=(OrderRefusalReason.MISSING_BASE_PRICE),
             message=("Não existe preço-base configurado para a cidade e tipologia."),
             details={
-                "city_ibge_code": order.property.city_ibge_code,
-                "property_type": order.property.property_type.value,
+                "city_ibge_code": (order.property.city_ibge_code),
+                "property_type": (order.property.property_type.value),
             },
         )
 
@@ -115,7 +118,7 @@ def calculate_and_store_valuation(
         new_status=OrderStatus.COMPLETED,
     )
 
-    model_version = get_default_model_version()
+    model_version = get_active_model_version(DEFAULT_MODEL_METHOD)
 
     calculation = model_version.calculator(
         order.property,
@@ -129,12 +132,12 @@ def calculate_and_store_valuation(
             internal_order_id=internal_order_id,
             method=model_version.method,
             model_version=model_version.version,
-            estimated_value=calculation.estimated_value,
+            estimated_value=(calculation.estimated_value),
             minimum_value=calculation.minimum_value,
             maximum_value=calculation.maximum_value,
             price_per_m2=calculation.price_per_m2,
-            reference_area_m2=calculation.reference_area_m2,
-            confidence_score=calculation.confidence_score,
+            reference_area_m2=(calculation.reference_area_m2),
+            confidence_score=(calculation.confidence_score),
             calculated_at=datetime.now(timezone.utc),
             commit=False,
         )

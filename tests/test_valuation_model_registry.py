@@ -3,6 +3,8 @@ from decimal import Decimal
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
+import pytest
+
 from app.infrastructure.database import SessionLocal
 from app.repositories.orders_sqlalchemy import create_order
 from app.schemas.order import (
@@ -16,10 +18,14 @@ from app.services.order_status_update import (
 from app.services.valuation_service import (
     calculate_and_store_valuation,
 )
-from engine.models.rule_based_v1 import ValuationCalculation
+from engine.models.rule_based_v1 import (
+    ValuationCalculation,
+)
 from engine.registry import (
+    DEFAULT_MODEL_METHOD,
     ModelStatus,
     ModelVersion,
+    ModelVersionNotActiveError,
 )
 
 
@@ -67,7 +73,7 @@ def create_test_order(
         updated_order = update_order_status_with_history(
             session=session,
             internal_order_id=internal_order_id,
-            new_status=OrderStatus.VALIDATING_INPUT,
+            new_status=(OrderStatus.VALIDATING_INPUT),
         )
 
     assert updated_order is not None
@@ -75,7 +81,7 @@ def create_test_order(
     return internal_order_id
 
 
-def test_valuation_service_uses_default_registry_model() -> None:
+def test_valuation_service_uses_active_registry_model() -> None:
     internal_order_id = create_test_order("VALUATION-REGISTRY-001")
 
     calculator = Mock(
@@ -95,12 +101,12 @@ def test_valuation_service_uses_default_registry_model() -> None:
         version="1.0.0-test",
         status=ModelStatus.ACTIVE,
         calculator=calculator,
-        description="Modelo usado no teste do registry.",
+        description=("Modelo usado no teste do registry."),
     )
 
     with (
         patch(
-            "app.services.valuation_service.get_default_model_version",
+            ("app.services.valuation_service.get_active_model_version"),
             return_value=model_version,
         ) as registry_mock,
         SessionLocal() as session,
@@ -115,5 +121,32 @@ def test_valuation_service_uses_default_registry_model() -> None:
     assert valuation.model_version == "1.0.0-test"
     assert valuation.estimated_value == Decimal("700000.00")
 
-    registry_mock.assert_called_once_with()
+    registry_mock.assert_called_once_with(DEFAULT_MODEL_METHOD)
     calculator.assert_called_once()
+
+
+def test_valuation_service_rejects_inactive_model() -> None:
+    internal_order_id = create_test_order("VALUATION-REGISTRY-002")
+
+    error = ModelVersionNotActiveError(
+        method=ValuationMethod.RULE_BASED_V1,
+        model_status=ModelStatus.DISABLED,
+    )
+
+    with (
+        patch(
+            ("app.services.valuation_service.get_active_model_version"),
+            side_effect=error,
+        ) as registry_mock,
+        SessionLocal() as session,
+    ):
+        with pytest.raises(
+            ModelVersionNotActiveError,
+            match=("Modelo AVM não está ativo: RULE_BASED_V1. Status atual: DISABLED."),
+        ):
+            calculate_and_store_valuation(
+                session=session,
+                internal_order_id=internal_order_id,
+            )
+
+    registry_mock.assert_called_once_with(DEFAULT_MODEL_METHOD)
