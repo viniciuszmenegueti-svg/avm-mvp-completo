@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from sqlalchemy import delete
 
+
 TEST_DATABASE_FILE = Path(__file__).resolve().parent / "test_avm.db"
 
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DATABASE_FILE.as_posix()}"
@@ -30,6 +31,7 @@ from app.domain.order_refusal_model import OrderRefusalModel
 from app.domain.order_status_history_model import (
     OrderStatusHistoryModel,
 )
+from app.domain.property_asset_model import PropertyAssetModel
 from app.domain.property_model import PropertyModel
 from app.domain.valuation_model import ValuationModel
 from app.infrastructure.database import (
@@ -102,6 +104,7 @@ TEST_CITIES_DATA = [
     },
 ]
 
+
 TEST_CITY_VALUATION_PRICES_DATA = [
     {
         "city_ibge_code": "3550308",
@@ -120,16 +123,18 @@ TEST_CITY_VALUATION_PRICES_DATA = [
     },
 ]
 
+
 Base.metadata.create_all(bind=engine)
 
 
 @pytest.fixture(autouse=True)
-def prepare_test_database() -> Generator[None]:
+def prepare_test_database() -> Generator[None, None, None]:
     with SessionLocal() as session:
         session.execute(delete(CityValuationPriceHistoryModel))
         session.execute(delete(ValuationModel))
         session.execute(delete(OrderRefusalModel))
         session.execute(delete(OrderStatusHistoryModel))
+        session.execute(delete(PropertyAssetModel))
         session.execute(delete(PropertyModel))
         session.execute(delete(OrderModel))
         session.execute(delete(CityValuationPriceModel))
@@ -153,6 +158,7 @@ def prepare_test_database() -> Generator[None]:
         session.execute(delete(ValuationModel))
         session.execute(delete(OrderRefusalModel))
         session.execute(delete(OrderStatusHistoryModel))
+        session.execute(delete(PropertyAssetModel))
         session.execute(delete(PropertyModel))
         session.execute(delete(OrderModel))
         session.execute(delete(CityValuationPriceModel))
