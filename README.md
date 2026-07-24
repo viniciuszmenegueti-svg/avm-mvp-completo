@@ -504,6 +504,14 @@ O teste valida:
 - Histórico de status
 - Idempotência do cálculo
 - Bloqueio de ordem duplicada
+- Criação temporária de cidade sem preço-base
+- Recusa da ordem com HTTP `409`
+- Código de erro `ORDER_REFUSED`
+- Persistência do motivo `MISSING_BASE_PRICE`
+- Consulta dos detalhes da recusa
+- Atualização automática para `REFUSED`
+- Histórico de status `VALIDATING_INPUT → REFUSED`
+- Limpeza automática da cidade temporária ao final do teste
 
 ## Migrations
 
