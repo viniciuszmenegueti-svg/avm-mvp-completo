@@ -29,6 +29,7 @@ API para recebimento, validação, processamento e avaliação automatizada de i
 - Validação de cidade, UF e código IBGE
 - Atualização controlada de status
 - Histórico de alterações de status
+- Registro e consulta de recusas
 - Bloqueio de ordens duplicadas
 - Cálculo inicial de avaliação AVM
 - Persistência do resultado da avaliação
@@ -253,6 +254,7 @@ GET   /orders/{internal_order_id}
 GET   /orders/external/{external_order_id}
 PATCH /orders/{internal_order_id}/status
 GET   /orders/{internal_order_id}/status-history
+GET   /orders/{internal_order_id}/refusal
 ```
 
 ### Modelos AVM
@@ -384,6 +386,45 @@ Falhas esperadas do motor AVM utilizam exceções específicas, como preço por 
 
 ```http
 GET /orders/{internal_order_id}/valuation
+```
+
+## Consulta da recusa
+
+```http
+GET /orders/{internal_order_id}/refusal
+```
+
+Exemplo de resposta:
+
+```json
+{
+  "refusal_id": "UUID-DA-RECUSA",
+  "internal_order_id": "UUID-DA-ORDEM",
+  "reason_code": "MISSING_BASE_PRICE",
+  "message": "Não existe preço-base configurado para a cidade e tipologia.",
+  "details": {
+    "city_ibge_code": "3550308",
+    "property_type": "APARTMENT"
+  },
+  "refused_at": "2026-07-22T20:05:00Z"
+}
+```
+
+A consulta retorna HTTP `404` com códigos distintos quando a ordem não existe ou quando não possui recusa registrada:
+
+```text
+ORDER_NOT_FOUND
+ORDER_REFUSAL_NOT_FOUND
+```
+
+Os motivos de recusa atualmente suportados são:
+
+```text
+MISSING_BASE_PRICE
+INSUFFICIENT_MARKET_DATA
+UNSUPPORTED_PROPERTY_TYPE
+PROPERTY_DATA_INCONSISTENT
+LOW_CONFIDENCE
 ```
 
 ## Tipologias aceitas
