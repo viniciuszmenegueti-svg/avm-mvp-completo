@@ -2,8 +2,11 @@ from decimal import Decimal
 
 import pytest
 
-from app.schemas.property import PropertyInput
-from app.services.valuation_calculator import (
+from app.schemas.property import (
+    PropertyInput,
+    PropertyType,
+)
+from engine.models.rule_based_v1 import (
     calculate_confidence_score,
     calculate_valuation,
     get_reference_area,
@@ -12,7 +15,7 @@ from app.services.valuation_calculator import (
 
 def apartment_property() -> PropertyInput:
     return PropertyInput(
-        property_type="APARTMENT",
+        property_type=PropertyType.APARTMENT,
         state="SP",
         city="São Paulo",
         city_ibge_code="3550308",
@@ -31,7 +34,7 @@ def apartment_property() -> PropertyInput:
 
 def house_property() -> PropertyInput:
     return PropertyInput(
-        property_type="HOUSE",
+        property_type=PropertyType.HOUSE,
         state="SP",
         city="São Paulo",
         city_ibge_code="3550308",
@@ -49,7 +52,7 @@ def house_property() -> PropertyInput:
 
 def land_property() -> PropertyInput:
     return PropertyInput(
-        property_type="LAND",
+        property_type=PropertyType.LAND,
         state="SP",
         city="São Paulo",
         city_ibge_code="3550308",
@@ -97,7 +100,7 @@ def test_confidence_score_uses_completed_optional_fields() -> None:
 def test_rejects_non_positive_price_per_m2() -> None:
     with pytest.raises(
         ValueError,
-        match="O preço por metro quadrado deve ser maior que zero",
+        match=("O preço por metro quadrado deve ser maior que zero"),
     ):
         calculate_valuation(
             property_data=apartment_property(),
@@ -111,6 +114,6 @@ def test_rejects_property_without_reference_area() -> None:
 
     with pytest.raises(
         ValueError,
-        match="Não foi possível determinar a área de referência",
+        match=("Não foi possível determinar a área de referência"),
     ):
         get_reference_area(property_data)
