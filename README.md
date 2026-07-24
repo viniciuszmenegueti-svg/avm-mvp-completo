@@ -477,7 +477,7 @@ Execute um arquivo específico:
 python -m pytest "tests\test_valuation_routes.py" --no-cov -v
 ```
 
-O projeto possui atualmente 190 testes automatizados e cobertura superior a 99%.
+O projeto possui atualmente 191 testes automatizados e cobertura superior a 99%.
 
 ## Teste de integração
 
