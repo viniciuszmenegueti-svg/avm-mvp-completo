@@ -17,6 +17,7 @@ from app.schemas.valuation import ValuationResponse
 from app.services.valuation_service import (
     calculate_and_store_valuation,
 )
+from engine.registry import ModelVersionNotActiveError
 
 
 router = APIRouter(
@@ -52,9 +53,20 @@ def create_order_valuation(
                 "new_status": error.new_status,
             },
         ) from error
+    except ModelVersionNotActiveError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "code": "AVM_MODEL_NOT_ACTIVE",
+                "message": str(error),
+                "method": error.method.value,
+                "model_status": error.model_status.value,
+                "internal_order_id": order_id,
+            },
+        ) from error
     except ValueError as error:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status_code=(status.HTTP_422_UNPROCESSABLE_CONTENT),
             detail={
                 "code": "VALUATION_CALCULATION_ERROR",
                 "message": str(error),
@@ -67,7 +79,7 @@ def create_order_valuation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
                 "code": "ORDER_NOT_FOUND",
-                "message": "Ordem de Serviço não encontrada.",
+                "message": ("Ordem de Serviço não encontrada."),
                 "internal_order_id": order_id,
             },
         )
@@ -96,7 +108,7 @@ def get_order_valuation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
                 "code": "VALUATION_NOT_FOUND",
-                "message": "Avaliação AVM não encontrada.",
+                "message": ("Avaliação AVM não encontrada."),
                 "internal_order_id": order_id,
             },
         )

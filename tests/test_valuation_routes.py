@@ -3,6 +3,11 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.schemas.valuation import ValuationMethod
+from engine.registry import (
+    ModelStatus,
+    ModelVersionNotActiveError,
+)
 
 
 client = TestClient(app)
@@ -82,7 +87,7 @@ def test_creates_and_reads_valuation() -> None:
     get_response = client.get(f"/orders/{internal_order_id}/valuation")
 
     assert get_response.status_code == 200
-    assert get_response.json()["valuation_id"] == (valuation["valuation_id"])
+    assert get_response.json()["valuation_id"] == valuation["valuation_id"]
 
 
 def test_returns_existing_valuation_on_repeated_post() -> None:
@@ -96,8 +101,7 @@ def test_returns_existing_valuation_on_repeated_post() -> None:
     assert first_response.status_code == 201
     assert second_response.status_code == 201
     assert (
-        second_response.json()["valuation_id"]
-        == (first_response.json()["valuation_id"])
+        second_response.json()["valuation_id"] == first_response.json()["valuation_id"]
     )
 
 
@@ -107,7 +111,7 @@ def test_returns_not_found_for_unknown_order() -> None:
     response = client.post(f"/orders/{internal_order_id}/valuation")
 
     assert response.status_code == 404
-    assert response.json()["detail"]["code"] == ("ORDER_NOT_FOUND")
+    assert response.json()["detail"]["code"] == "ORDER_NOT_FOUND"
 
 
 def test_returns_not_found_for_unknown_valuation() -> None:
@@ -116,7 +120,7 @@ def test_returns_not_found_for_unknown_valuation() -> None:
     response = client.get(f"/orders/{internal_order_id}/valuation")
 
     assert response.status_code == 404
-    assert response.json()["detail"]["code"] == ("VALUATION_NOT_FOUND")
+    assert response.json()["detail"]["code"] == "VALUATION_NOT_FOUND"
 
 
 def test_rejects_valuation_before_input_validation() -> None:
@@ -125,7 +129,7 @@ def test_rejects_valuation_before_input_validation() -> None:
     response = client.post(f"/orders/{internal_order_id}/valuation")
 
     assert response.status_code == 409
-    assert response.json()["detail"]["code"] == ("INVALID_STATUS_TRANSITION")
+    assert response.json()["detail"]["code"] == "INVALID_STATUS_TRANSITION"
 
 
 def test_returns_unprocessable_entity_for_calculation_error() -> None:
@@ -134,7 +138,7 @@ def test_returns_unprocessable_entity_for_calculation_error() -> None:
     move_order_to_validating_input(internal_order_id)
 
     with patch(
-        "app.api.routes.valuations.calculate_and_store_valuation",
+        ("app.api.routes.valuations.calculate_and_store_valuation"),
         side_effect=ValueError("Não existe preço-base configurado para a cidade."),
     ):
         response = client.post(f"/orders/{internal_order_id}/valuation")
@@ -143,5 +147,33 @@ def test_returns_unprocessable_entity_for_calculation_error() -> None:
     assert response.json()["detail"] == {
         "code": "VALUATION_CALCULATION_ERROR",
         "message": ("Não existe preço-base configurado para a cidade."),
+        "internal_order_id": internal_order_id,
+    }
+
+
+def test_returns_service_unavailable_for_inactive_model() -> None:
+    internal_order_id = create_order("VALUATION-ROUTE-006")
+
+    move_order_to_validating_input(internal_order_id)
+
+    error = ModelVersionNotActiveError(
+        method=ValuationMethod.RULE_BASED_V1,
+        model_status=ModelStatus.DISABLED,
+    )
+
+    with patch(
+        ("app.api.routes.valuations.calculate_and_store_valuation"),
+        side_effect=error,
+    ):
+        response = client.post(f"/orders/{internal_order_id}/valuation")
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == {
+        "code": "AVM_MODEL_NOT_ACTIVE",
+        "message": (
+            "Modelo AVM não está ativo: RULE_BASED_V1. Status atual: DISABLED."
+        ),
+        "method": "RULE_BASED_V1",
+        "model_status": "DISABLED",
         "internal_order_id": internal_order_id,
     }
