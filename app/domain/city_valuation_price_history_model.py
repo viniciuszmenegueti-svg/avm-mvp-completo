@@ -8,6 +8,7 @@ from sqlalchemy import (
     Numeric,
     String,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -58,6 +59,12 @@ class CityValuationPriceHistoryModel(Base):
             scale=2,
         ),
         nullable=False,
+    )
+
+    changed_by: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+        server_default=text("'system'"),
     )
 
     changed_at: Mapped[datetime] = mapped_column(

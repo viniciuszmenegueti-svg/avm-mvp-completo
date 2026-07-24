@@ -20,6 +20,7 @@ def update_city_valuation_price_with_history(
     city_ibge_code: str,
     property_type: PropertyType,
     price_per_m2: Decimal,
+    changed_by: str,
 ) -> CityValuationPriceResponse | None:
     current_price = get_city_valuation_price(
         session=session,
@@ -53,6 +54,7 @@ def update_city_valuation_price_with_history(
             property_type=property_type,
             previous_price_per_m2=(current_price.price_per_m2),
             new_price_per_m2=price_per_m2,
+            changed_by=changed_by,
             commit=False,
         )
 

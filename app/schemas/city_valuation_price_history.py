@@ -38,6 +38,12 @@ class CityValuationPriceHistoryResponse(BaseModel):
         description="Novo preço por metro quadrado",
     )
 
+    changed_by: str = Field(
+        min_length=1,
+        max_length=100,
+        description="Responsável pela alteração do preço",
+    )
+
     changed_at: datetime
 
 

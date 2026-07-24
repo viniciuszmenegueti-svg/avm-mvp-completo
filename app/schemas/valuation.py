@@ -22,6 +22,12 @@ class ValuationResponse(BaseModel):
         description="Método utilizado para calcular a avaliação",
         examples=["RULE_BASED_V1"],
     )
+    model_version: str = Field(
+        min_length=1,
+        max_length=50,
+        description="Versão exata do modelo utilizada no cálculo",
+        examples=["1.0.0"],
+    )
     estimated_value: Decimal = Field(
         gt=0,
         decimal_places=2,

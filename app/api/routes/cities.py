@@ -9,12 +9,8 @@ from fastapi import (
 )
 
 from app.core.admin_auth import require_admin_api_key
-from app.infrastructure.dependencies import (
-    DatabaseSession,
-)
-from app.repositories.cities_sqlalchemy import (
-    list_active_cities,
-)
+from app.infrastructure.dependencies import DatabaseSession
+from app.repositories.cities_sqlalchemy import list_active_cities
 from app.repositories.city_valuation_price_history_sqlalchemy import (
     list_city_valuation_price_history,
 )
@@ -36,7 +32,7 @@ from app.services.city_valuation_price_service import (
 
 
 AdminAuthorization = Annotated[
-    None,
+    str,
     Depends(require_admin_api_key),
 ]
 
@@ -120,15 +116,14 @@ def patch_city_valuation_price(
     property_type: PropertyType,
     payload: CityValuationPriceUpdate,
     session: DatabaseSession,
-    authorization: AdminAuthorization,
+    changed_by: AdminAuthorization,
 ) -> CityValuationPriceResponse:
-    del authorization
-
     updated_price = update_city_valuation_price_with_history(
         session=session,
         city_ibge_code=city_ibge_code,
         property_type=property_type,
         price_per_m2=payload.price_per_m2,
+        changed_by=changed_by,
     )
 
     if updated_price is None:

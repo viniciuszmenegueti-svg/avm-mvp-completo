@@ -28,6 +28,7 @@ def test_creates_city_valuation_price_history() -> None:
             property_type=PropertyType.APARTMENT,
             previous_price_per_m2=Decimal("10500.00"),
             new_price_per_m2=Decimal("11000.00"),
+            changed_by="repository-test",
         )
 
     assert history.city_valuation_price_id == current_price.id
@@ -35,6 +36,7 @@ def test_creates_city_valuation_price_history() -> None:
     assert history.property_type == PropertyType.APARTMENT
     assert history.previous_price_per_m2 == Decimal("10500.00")
     assert history.new_price_per_m2 == Decimal("11000.00")
+    assert history.changed_by == "repository-test"
 
 
 def test_lists_city_valuation_price_history() -> None:
@@ -54,6 +56,7 @@ def test_lists_city_valuation_price_history() -> None:
             property_type=PropertyType.APARTMENT,
             previous_price_per_m2=Decimal("10500.00"),
             new_price_per_m2=Decimal("11000.00"),
+            changed_by="first-user",
         )
 
         create_city_valuation_price_history(
@@ -63,6 +66,7 @@ def test_lists_city_valuation_price_history() -> None:
             property_type=PropertyType.APARTMENT,
             previous_price_per_m2=Decimal("11000.00"),
             new_price_per_m2=Decimal("11500.00"),
+            changed_by="second-user",
         )
 
         history, total = list_city_valuation_price_history(
@@ -76,7 +80,9 @@ def test_lists_city_valuation_price_history() -> None:
     assert total == 2
     assert len(history) == 2
     assert history[0].new_price_per_m2 == Decimal("11500.00")
+    assert history[0].changed_by == "second-user"
     assert history[1].new_price_per_m2 == Decimal("11000.00")
+    assert history[1].changed_by == "first-user"
 
 
 def test_paginates_city_valuation_price_history() -> None:
@@ -96,6 +102,7 @@ def test_paginates_city_valuation_price_history() -> None:
             property_type=PropertyType.APARTMENT,
             previous_price_per_m2=Decimal("10500.00"),
             new_price_per_m2=Decimal("11000.00"),
+            changed_by="first-user",
         )
 
         create_city_valuation_price_history(
@@ -105,6 +112,7 @@ def test_paginates_city_valuation_price_history() -> None:
             property_type=PropertyType.APARTMENT,
             previous_price_per_m2=Decimal("11000.00"),
             new_price_per_m2=Decimal("11500.00"),
+            changed_by="second-user",
         )
 
         history, total = list_city_valuation_price_history(
@@ -118,6 +126,7 @@ def test_paginates_city_valuation_price_history() -> None:
     assert total == 2
     assert len(history) == 1
     assert history[0].new_price_per_m2 == Decimal("11000.00")
+    assert history[0].changed_by == "first-user"
 
 
 def test_returns_empty_history_for_unknown_price() -> None:

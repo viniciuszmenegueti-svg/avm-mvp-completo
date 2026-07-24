@@ -1,8 +1,13 @@
 from datetime import datetime
 
 from sqlalchemy import DateTime, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+    relationship,
+)
 
+from app.domain.property_model import PropertyModel
 from app.infrastructure.database import Base
 
 
@@ -34,4 +39,11 @@ class OrderModel(Base):
     property_json: Mapped[str] = mapped_column(
         Text,
         nullable=False,
+    )
+
+    property_record: Mapped[PropertyModel | None] = relationship(
+        back_populates="order",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        uselist=False,
     )

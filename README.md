@@ -29,6 +29,7 @@ API para recebimento, validação, processamento e avaliação automatizada de i
 - Validação de cidade, UF e código IBGE
 - Atualização controlada de status
 - Histórico de alterações de status
+- Registro e consulta de recusas
 - Bloqueio de ordens duplicadas
 - Cálculo inicial de avaliação AVM
 - Persistência do resultado da avaliação
@@ -37,6 +38,14 @@ API para recebimento, validação, processamento e avaliação automatizada de i
 - Cálculo do valor por metro quadrado
 - Índice de confiança da avaliação
 - Idempotência no cálculo da avaliação
+- Configuração de preços-base por cidade e tipologia no banco de dados
+- Atualização de preços protegida por credenciais administrativas
+- Suporte a múltiplos administradores com identidade vinculada à chave
+- Histórico de alterações de preços
+- Identificação do responsável por cada alteração de preço
+- Registro e consulta das versões dos modelos AVM
+- Bloqueio da avaliação quando o modelo padrão não está ativo
+- Persistência da versão do modelo utilizada em cada avaliação
 - Transações atômicas no banco de dados
 - Healthchecks de vida e prontidão
 - Request ID por requisição
@@ -51,7 +60,7 @@ API para recebimento, validação, processamento e avaliação automatizada de i
 
 O método `RULE_BASED_V1` é uma implementação inicial e demonstrativa.
 
-Os preços-base por metro quadrado utilizados atualmente são valores configurados no código para validação técnica do fluxo. Eles não devem ser considerados valores reais de mercado nem utilizados para emissão de laudos imobiliários.
+Os preços-base por metro quadrado utilizados atualmente são valores demonstrativos persistidos no banco de dados para validação técnica do fluxo. Eles não devem ser considerados valores reais de mercado nem utilizados para emissão de laudos imobiliários.
 
 Uma versão futura poderá utilizar:
 
@@ -114,13 +123,23 @@ Copy-Item ".env.example" ".env"
 Exemplo de configuração:
 
 ```env
-POSTGRES_PASSWORD=avm_local_password
 APP_NAME=AVM Imoveis API
-APP_VERSION=0.1.0
+APP_VERSION=0.2.0-dev
 APP_ENV=development
 APP_DEBUG=false
 LOG_LEVEL=INFO
-ADMIN_API_KEY=change_this_admin_key
+
+ADMIN_CREDENTIALS_JSON={"admin-local":"change_this_admin_key","pricing-admin":"change_this_pricing_key"}
+
+ADMIN_API_KEY=
+ADMIN_ACTOR=
+
+POSTGRES_DB=avm
+POSTGRES_USER=avm_app
+POSTGRES_PASSWORD=avm_local_password
+POSTGRES_PORT=5433
+
+DATABASE_URL=postgresql+psycopg://avm_app:avm_local_password@localhost:5433/avm
 ```
 
 O arquivo `.env` não deve ser enviado para o repositório.
@@ -216,6 +235,16 @@ GET   /cities/{city_ibge_code}/valuation-prices/{property_type}/history
 PATCH /cities/{city_ibge_code}/valuation-prices/{property_type}
 ```
 
+A atualização do preço-base exige o seguinte cabeçalho:
+
+```text
+X-Admin-API-Key: chave administrativa configurada no ambiente
+```
+
+As credenciais podem ser configuradas em `ADMIN_CREDENTIALS_JSON`, associando cada chave a uma identidade administrativa. A identidade correspondente à chave utilizada é armazenada como `changed_by` no histórico e não pode ser escolhida pelo cliente.
+
+As variáveis legadas `ADMIN_API_KEY` e `ADMIN_ACTOR` permanecem disponíveis para compatibilidade, mas a configuração com `ADMIN_CREDENTIALS_JSON` é a opção recomendada.
+
 ### Ordens de Serviço
 
 ```text
@@ -225,7 +254,17 @@ GET   /orders/{internal_order_id}
 GET   /orders/external/{external_order_id}
 PATCH /orders/{internal_order_id}/status
 GET   /orders/{internal_order_id}/status-history
+GET   /orders/{internal_order_id}/refusal
 ```
+
+### Modelos AVM
+
+```text
+GET /models
+GET /models/{method}
+```
+
+`GET /models` lista somente os modelos ativos. `GET /models/{method}` consulta uma versão registrada pelo método, como `RULE_BASED_V1`.
 
 ### Avaliações AVM
 
@@ -233,6 +272,8 @@ GET   /orders/{internal_order_id}/status-history
 POST /orders/{internal_order_id}/valuation
 GET  /orders/{internal_order_id}/valuation
 ```
+
+A criação da avaliação exige que o modelo padrão esteja com status `ACTIVE`. Quando o modelo está desativado ou depreciado, a API responde com HTTP `503` e o código `AVM_MODEL_NOT_ACTIVE`.
 
 ## Exemplo de criação de ordem
 
@@ -324,6 +365,7 @@ Exemplo de resposta:
   "valuation_id": "UUID-DA-AVALIACAO",
   "internal_order_id": "UUID-DA-ORDEM",
   "method": "RULE_BASED_V1",
+  "model_version": "1.0.0",
   "estimated_value": "735000.00",
   "minimum_value": "661500.00",
   "maximum_value": "808500.00",
@@ -336,10 +378,53 @@ Exemplo de resposta:
 
 O endpoint é idempotente. Chamadas repetidas para a mesma ordem retornam a avaliação já existente.
 
+A versão do modelo utilizada é persistida em `model_version`, permitindo rastrear exatamente qual implementação produziu o resultado.
+
+Falhas esperadas do motor AVM utilizam exceções específicas, como preço por metro quadrado inválido ou ausência defensiva da área de referência. A API converte essas falhas em HTTP `422` com o código `VALUATION_CALCULATION_ERROR`.
+
 ## Consulta da avaliação
 
 ```http
 GET /orders/{internal_order_id}/valuation
+```
+
+## Consulta da recusa
+
+```http
+GET /orders/{internal_order_id}/refusal
+```
+
+Exemplo de resposta:
+
+```json
+{
+  "refusal_id": "UUID-DA-RECUSA",
+  "internal_order_id": "UUID-DA-ORDEM",
+  "reason_code": "MISSING_BASE_PRICE",
+  "message": "Não existe preço-base configurado para a cidade e tipologia.",
+  "details": {
+    "city_ibge_code": "3550308",
+    "property_type": "APARTMENT"
+  },
+  "refused_at": "2026-07-22T20:05:00Z"
+}
+```
+
+A consulta retorna HTTP `404` com códigos distintos quando a ordem não existe ou quando não possui recusa registrada:
+
+```text
+ORDER_NOT_FOUND
+ORDER_REFUSAL_NOT_FOUND
+```
+
+Os motivos de recusa atualmente suportados são:
+
+```text
+MISSING_BASE_PRICE
+INSUFFICIENT_MARKET_DATA
+UNSUPPORTED_PROPERTY_TYPE
+PROPERTY_DATA_INCONSISTENT
+LOW_CONFIDENCE
 ```
 
 ## Tipologias aceitas
@@ -392,7 +477,7 @@ Execute um arquivo específico:
 python -m pytest "tests\test_valuation_routes.py" --no-cov -v
 ```
 
-O projeto possui atualmente mais de 100 testes automatizados e cobertura integral do código da aplicação.
+O projeto possui atualmente 191 testes automatizados e cobertura superior a 99%.
 
 ## Teste de integração
 
@@ -406,6 +491,10 @@ O teste valida:
 
 - Healthchecks
 - Lista de cidades
+- Bloqueio de atualização sem chave administrativa
+- Bloqueio de atualização com chave inválida
+- Atualização autorizada de preço-base
+- Registro do responsável vinculado à chave administrativa
 - Criação da ordem
 - Consulta por identificador externo
 - Atualização para `VALIDATING_INPUT`
@@ -415,6 +504,14 @@ O teste valida:
 - Histórico de status
 - Idempotência do cálculo
 - Bloqueio de ordem duplicada
+- Criação temporária de cidade sem preço-base
+- Recusa da ordem com HTTP `409`
+- Código de erro `ORDER_REFUSED`
+- Persistência do motivo `MISSING_BASE_PRICE`
+- Consulta dos detalhes da recusa
+- Atualização automática para `REFUSED`
+- Histórico de status `VALIDATING_INPUT → REFUSED`
+- Limpeza automática da cidade temporária ao final do teste
 
 ## Migrations
 
@@ -478,6 +575,12 @@ app/
 ├── services/
 └── main.py
 
+engine/
+├── exceptions.py
+├── registry.py
+└── models/
+    └── rule_based_v1.py
+
 migrations/
 ├── versions/
 └── env.py
@@ -495,6 +598,8 @@ tests/
 O projeto inclui:
 
 - Variáveis de ambiente para configurações sensíveis
+- Suporte a múltiplas credenciais administrativas
+- Identidade administrativa determinada no servidor
 - Senha do PostgreSQL fora do código-fonte
 - Auditoria de dependências com `pip-audit`
 - Usuário não privilegiado na imagem Docker

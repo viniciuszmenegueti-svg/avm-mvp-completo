@@ -10,13 +10,19 @@ from app.domain.exceptions import (
     InvalidOrderStatusTransitionError,
 )
 from app.infrastructure.dependencies import DatabaseSession
+from app.repositories.orders_sqlalchemy import (
+    get_order_by_internal_id,
+)
 from app.repositories.valuations_sqlalchemy import (
     get_valuation_by_internal_order_id,
 )
+from app.schemas.order import OrderStatus
 from app.schemas.valuation import ValuationResponse
 from app.services.valuation_service import (
     calculate_and_store_valuation,
 )
+from engine.exceptions import ValuationCalculationError
+from engine.registry import ModelVersionNotActiveError
 
 
 router = APIRouter(
@@ -52,7 +58,18 @@ def create_order_valuation(
                 "new_status": error.new_status,
             },
         ) from error
-    except ValueError as error:
+    except ModelVersionNotActiveError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "code": "AVM_MODEL_NOT_ACTIVE",
+                "message": str(error),
+                "method": error.method.value,
+                "model_status": error.model_status.value,
+                "internal_order_id": order_id,
+            },
+        ) from error
+    except ValuationCalculationError as error:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={
@@ -63,11 +80,37 @@ def create_order_valuation(
         ) from error
 
     if valuation is None:
+        order = get_order_by_internal_id(
+            session=session,
+            internal_order_id=order_id,
+        )
+
+        if order is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "code": "ORDER_NOT_FOUND",
+                    "message": "Ordem de Serviço não encontrada.",
+                    "internal_order_id": order_id,
+                },
+            )
+
+        if order.status == OrderStatus.REFUSED:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "ORDER_REFUSED",
+                    "message": ("A Ordem de Serviço foi recusada durante a avaliação."),
+                    "internal_order_id": order_id,
+                    "refusal_url": f"/orders/{order_id}/refusal",
+                },
+            )
+
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status.HTTP_409_CONFLICT,
             detail={
-                "code": "ORDER_NOT_FOUND",
-                "message": "Ordem de Serviço não encontrada.",
+                "code": "VALUATION_NOT_CREATED",
+                "message": "A avaliação AVM não pôde ser criada.",
                 "internal_order_id": order_id,
             },
         )

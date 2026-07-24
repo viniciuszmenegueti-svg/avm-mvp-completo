@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - master
+      - develop
   pull_request:
     branches:
       - master
+      - develop
 
 permissions:
   contents: read
@@ -28,6 +30,7 @@ jobs:
       APP_ENV: test
       APP_DEBUG: "false"
       LOG_LEVEL: INFO
+      ADMIN_CREDENTIALS_JSON: '{"ci-admin":"ci_admin_key"}'
 
     steps:
       - name: Baixar o codigo
@@ -67,6 +70,25 @@ jobs:
 
       - name: Iniciar ambiente Docker
         run: docker compose up -d --build
+
+      - name: Aguardar API ficar saudavel
+        run: |
+          for attempt in $(seq 1 30); do
+            status="$(docker inspect --format='{{.State.Health.Status}}' avm-api 2>/dev/null || true)"
+
+            if [ "$status" = "healthy" ]; then
+              echo "API saudavel."
+              exit 0
+            fi
+
+            echo "Tentativa $attempt/30: status atual = ${status:-indisponivel}"
+            sleep 2
+          done
+
+          echo "A API nao ficou saudavel dentro do prazo."
+          docker compose ps
+          docker compose logs api
+          exit 1
 
       - name: Verificar migrations pendentes
         run: docker compose exec -T api alembic check

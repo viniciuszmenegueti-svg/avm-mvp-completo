@@ -1,4 +1,5 @@
 import os
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -8,11 +9,14 @@ TEST_DATABASE_FILE = Path(__file__).resolve().parent / "test_avm.db"
 
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DATABASE_FILE.as_posix()}"
 os.environ["APP_NAME"] = "AVM Imóveis API"
-os.environ["APP_VERSION"] = "0.1.0"
+os.environ["APP_VERSION"] = "0.2.0-dev"
 os.environ["APP_ENV"] = "test"
 os.environ["APP_DEBUG"] = "false"
 os.environ["LOG_LEVEL"] = "INFO"
+
+os.environ["ADMIN_CREDENTIALS_JSON"] = ""
 os.environ["ADMIN_API_KEY"] = "avm-test-admin-key"
+os.environ["ADMIN_ACTOR"] = "avm-test-admin"
 
 from app.domain.city_model import CityModel
 from app.domain.city_valuation_price_history_model import (
@@ -22,9 +26,11 @@ from app.domain.city_valuation_price_model import (
     CityValuationPriceModel,
 )
 from app.domain.order_model import OrderModel
+from app.domain.order_refusal_model import OrderRefusalModel
 from app.domain.order_status_history_model import (
     OrderStatusHistoryModel,
 )
+from app.domain.property_model import PropertyModel
 from app.domain.valuation_model import ValuationModel
 from app.infrastructure.database import (
     Base,
@@ -118,11 +124,13 @@ Base.metadata.create_all(bind=engine)
 
 
 @pytest.fixture(autouse=True)
-def prepare_test_database():
+def prepare_test_database() -> Generator[None]:
     with SessionLocal() as session:
         session.execute(delete(CityValuationPriceHistoryModel))
         session.execute(delete(ValuationModel))
+        session.execute(delete(OrderRefusalModel))
         session.execute(delete(OrderStatusHistoryModel))
+        session.execute(delete(PropertyModel))
         session.execute(delete(OrderModel))
         session.execute(delete(CityValuationPriceModel))
         session.execute(delete(CityModel))
@@ -132,7 +140,7 @@ def prepare_test_database():
         session.add_all(
             [
                 CityValuationPriceModel(**price_data)
-                for price_data in (TEST_CITY_VALUATION_PRICES_DATA)
+                for price_data in TEST_CITY_VALUATION_PRICES_DATA
             ]
         )
 
@@ -143,14 +151,22 @@ def prepare_test_database():
     with SessionLocal() as session:
         session.execute(delete(CityValuationPriceHistoryModel))
         session.execute(delete(ValuationModel))
+        session.execute(delete(OrderRefusalModel))
         session.execute(delete(OrderStatusHistoryModel))
+        session.execute(delete(PropertyModel))
         session.execute(delete(OrderModel))
         session.execute(delete(CityValuationPriceModel))
         session.execute(delete(CityModel))
         session.commit()
 
 
-def pytest_sessionfinish(session, exitstatus) -> None:
+def pytest_sessionfinish(
+    session: pytest.Session,
+    exitstatus: int,
+) -> None:
+    del session
+    del exitstatus
+
     engine.dispose()
 
     if TEST_DATABASE_FILE.exists():

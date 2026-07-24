@@ -1,4 +1,4 @@
-FROM python:3.14-slim
+FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -17,6 +17,7 @@ RUN python -m pip install --upgrade pip \
 COPY alembic.ini .
 COPY migrations ./migrations
 COPY app ./app
+COPY engine ./engine
 COPY docker-entrypoint.sh .
 
 RUN chmod +x /app/docker-entrypoint.sh \

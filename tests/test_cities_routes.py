@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -113,6 +115,10 @@ def test_rejects_invalid_admin_key() -> None:
     }
 
 
+@patch(
+    "app.core.admin_auth.ADMIN_ACTOR",
+    "avm-test-admin",
+)
 def test_records_price_change_history() -> None:
     update_response = client.patch(
         "/cities/3550308/valuation-prices/APARTMENT",
@@ -141,8 +147,13 @@ def test_records_price_change_history() -> None:
     assert history_item["property_type"] == "APARTMENT"
     assert history_item["previous_price_per_m2"] == "10500.00"
     assert history_item["new_price_per_m2"] == "11000.00"
+    assert history_item["changed_by"] == "avm-test-admin"
 
 
+@patch(
+    "app.core.admin_auth.ADMIN_ACTOR",
+    "avm-test-admin",
+)
 def test_paginates_price_change_history() -> None:
     first_update_response = client.patch(
         "/cities/3550308/valuation-prices/APARTMENT",
@@ -177,6 +188,7 @@ def test_paginates_price_change_history() -> None:
     assert history["offset"] == 1
     assert len(history["items"]) == 1
     assert history["items"][0]["new_price_per_m2"] == "11000.00"
+    assert history["items"][0]["changed_by"] == "avm-test-admin"
 
 
 def test_does_not_record_history_when_price_is_unchanged() -> None:

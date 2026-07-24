@@ -1,8 +1,10 @@
 import json
 import os
+import subprocess
 import sys
 import time
 import uuid
+from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -20,7 +22,7 @@ EXPECTED_APP_NAME = os.getenv(
 
 EXPECTED_APP_VERSION = os.getenv(
     "APP_VERSION",
-    "0.1.0",
+    "0.2.0-dev",
 )
 
 EXPECTED_APP_ENV = os.getenv(
@@ -28,13 +30,107 @@ EXPECTED_APP_ENV = os.getenv(
     "development",
 )
 
+
+def read_local_env() -> dict[str, str]:
+    env_path = Path(__file__).resolve().parents[1] / ".env"
+
+    if not env_path.exists():
+        return {}
+
+    values: dict[str, str] = {}
+
+    for raw_line in env_path.read_text(
+        encoding="utf-8",
+    ).splitlines():
+        line = raw_line.strip()
+
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip()
+
+    return values
+
+
+LOCAL_ENV = read_local_env()
+
+ADMIN_CREDENTIALS_JSON = (
+    os.getenv(
+        "ADMIN_CREDENTIALS_JSON",
+        "",
+    ).strip()
+    or LOCAL_ENV.get(
+        "ADMIN_CREDENTIALS_JSON",
+        "",
+    ).strip()
+)
+
 ADMIN_API_KEY = os.getenv(
+    "ADMIN_API_KEY",
+    "",
+) or LOCAL_ENV.get(
     "ADMIN_API_KEY",
     "",
 )
 
+ADMIN_ACTOR = (
+    os.getenv(
+        "ADMIN_ACTOR",
+        "",
+    ).strip()
+    or LOCAL_ENV.get(
+        "ADMIN_ACTOR",
+        "integration-test",
+    ).strip()
+)
+
+
+def resolve_admin_credentials() -> tuple[str, str]:
+    if ADMIN_CREDENTIALS_JSON:
+        try:
+            credentials = json.loads(ADMIN_CREDENTIALS_JSON)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(
+                "A variável ADMIN_CREDENTIALS_JSON contém JSON inválido."
+            ) from exc
+
+        if not isinstance(credentials, dict) or not credentials:
+            raise RuntimeError(
+                "A variável ADMIN_CREDENTIALS_JSON deve conter ao menos uma credencial."
+            )
+
+        actor, api_key = next(iter(credentials.items()))
+
+        if (
+            not isinstance(actor, str)
+            or not actor.strip()
+            or not isinstance(api_key, str)
+            or not api_key
+        ):
+            raise RuntimeError(
+                "A primeira credencial administrativa configurada é inválida."
+            )
+
+        return actor.strip(), api_key
+
+    if not ADMIN_API_KEY:
+        raise RuntimeError("Nenhuma credencial administrativa foi definida.")
+
+    if not ADMIN_ACTOR:
+        raise RuntimeError("A variável ADMIN_ACTOR não foi definida.")
+
+    return ADMIN_ACTOR, ADMIN_API_KEY
+
+
+RESOLVED_ADMIN_ACTOR, RESOLVED_ADMIN_API_KEY = resolve_admin_credentials()
+
 MAX_READY_ATTEMPTS = 30
 READY_INTERVAL_SECONDS = 2
+
+REFUSAL_CITY_IBGE_CODE = "9999999"
+REFUSAL_CITY_NAME = "Cidade de Integracao"
+REFUSAL_CITY_STATE = "ES"
 
 
 def request_json(
@@ -68,7 +164,10 @@ def request_json(
     )
 
     try:
-        with urlopen(request, timeout=10) as response:
+        with urlopen(
+            request,
+            timeout=10,
+        ) as response:
             status_code = response.status
             response_body = response.read().decode("utf-8")
 
@@ -83,7 +182,8 @@ def request_json(
 
     if status_code != expected_status:
         raise AssertionError(
-            f"{method} {path} retornou HTTP {status_code}. "
+            f"{method} {path} retornou HTTP "
+            f"{status_code}. "
             f"Esperado: {expected_status}. "
             f"Resposta: {response_body}"
         )
@@ -107,10 +207,71 @@ def assert_equal(
         )
 
 
+def execute_postgres_sql(sql: str) -> None:
+    command = [
+        "docker",
+        "compose",
+        "exec",
+        "-T",
+        "postgres",
+        "psql",
+        "-U",
+        "avm_app",
+        "-d",
+        "avm",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-c",
+        sql,
+    ]
+
+    result = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+
+    if result.returncode != 0:
+        raise RuntimeError(
+            "Falha ao executar comando no PostgreSQL. "
+            f"Saida: {result.stdout.strip()} "
+            f"Erro: {result.stderr.strip()}"
+        )
+
+
+def prepare_refusal_test_city() -> None:
+    execute_postgres_sql(
+        "DELETE FROM city_valuation_prices "
+        f"WHERE city_ibge_code = '{REFUSAL_CITY_IBGE_CODE}'; "
+        "DELETE FROM cities "
+        f"WHERE city_ibge_code = '{REFUSAL_CITY_IBGE_CODE}'; "
+        "INSERT INTO cities "
+        "(city_ibge_code, name, state, active) VALUES "
+        f"('{REFUSAL_CITY_IBGE_CODE}', "
+        f"'{REFUSAL_CITY_NAME}', "
+        f"'{REFUSAL_CITY_STATE}', true);"
+    )
+
+
+def remove_refusal_test_city() -> None:
+    execute_postgres_sql(
+        "DELETE FROM city_valuation_prices "
+        f"WHERE city_ibge_code = '{REFUSAL_CITY_IBGE_CODE}'; "
+        "DELETE FROM cities "
+        f"WHERE city_ibge_code = '{REFUSAL_CITY_IBGE_CODE}';"
+    )
+
+
 def wait_until_ready() -> None:
     print("Aguardando a API ficar pronta...")
 
-    for attempt in range(1, MAX_READY_ATTEMPTS + 1):
+    for attempt in range(
+        1,
+        MAX_READY_ATTEMPTS + 1,
+    ):
         try:
             response = request_json(
                 method="GET",
@@ -148,6 +309,31 @@ def build_order_payload(
             "postal_code": "01001-000",
             "neighborhood": "Centro",
             "street": "Rua de Teste",
+            "number": "100",
+            "complement": "Apartamento 10",
+            "private_area_m2": 70,
+            "built_area_m2": 80,
+            "land_area_m2": None,
+            "bedrooms": 2,
+            "bathrooms": 2,
+            "parking_spaces": 1,
+        },
+    }
+
+
+def build_refused_order_payload(
+    external_order_id: str,
+) -> dict[str, Any]:
+    return {
+        "external_order_id": external_order_id,
+        "property": {
+            "property_type": "APARTMENT",
+            "state": REFUSAL_CITY_STATE,
+            "city": REFUSAL_CITY_NAME,
+            "city_ibge_code": REFUSAL_CITY_IBGE_CODE,
+            "postal_code": "29000-000",
+            "neighborhood": "Centro",
+            "street": "Rua de Integracao",
             "number": "100",
             "complement": "Apartamento 10",
             "private_area_m2": 70,
@@ -316,13 +502,10 @@ def run_integration_test() -> None:
         "quantidade de cidades",
     )
 
-    if not ADMIN_API_KEY:
-        raise RuntimeError("A variável ADMIN_API_KEY não foi definida.")
-
     print("Verificando bloqueio sem chave administrativa...")
     missing_key_response = request_json(
         method="PATCH",
-        path="/cities/3550308/valuation-prices/APARTMENT",
+        path=("/cities/3550308/valuation-prices/APARTMENT"),
         body={
             "price_per_m2": "10500.00",
         },
@@ -338,38 +521,80 @@ def run_integration_test() -> None:
     print("Verificando bloqueio com chave administrativa inválida...")
     invalid_key_response = request_json(
         method="PATCH",
-        path="/cities/3550308/valuation-prices/APARTMENT",
+        path=("/cities/3550308/valuation-prices/APARTMENT"),
         body={
             "price_per_m2": "10500.00",
         },
         expected_status=403,
         additional_headers={
-            "X-Admin-API-Key": "invalid-integration-key",
+            "X-Admin-API-Key": ("invalid-integration-key"),
         },
     )
 
     assert_equal(
         invalid_key_response["detail"]["code"],
         "INVALID_ADMIN_API_KEY",
-        "código de erro com chave administrativa inválida",
+        ("código de erro com chave administrativa inválida"),
     )
 
     print("Verificando atualização com chave administrativa válida...")
     authorized_price = request_json(
         method="PATCH",
-        path="/cities/3550308/valuation-prices/APARTMENT",
+        path=("/cities/3550308/valuation-prices/APARTMENT"),
         body={
-            "price_per_m2": "10500.00",
+            "price_per_m2": "11000.00",
         },
         additional_headers={
-            "X-Admin-API-Key": ADMIN_API_KEY,
+            "X-Admin-API-Key": (RESOLVED_ADMIN_API_KEY),
         },
     )
 
     assert_equal(
         authorized_price["price_per_m2"],
+        "11000.00",
+        ("preço atualizado com chave administrativa"),
+    )
+
+    print("Verificando histórico da alteração de preço...")
+    price_history = request_json(
+        method="GET",
+        path=("/cities/3550308/valuation-prices/APARTMENT/history?limit=1&offset=0"),
+    )
+
+    latest_price_history = price_history["items"][0]
+
+    assert_equal(
+        latest_price_history["previous_price_per_m2"],
         "10500.00",
-        "preço atualizado com chave administrativa",
+        "preço anterior no histórico",
+    )
+    assert_equal(
+        latest_price_history["new_price_per_m2"],
+        "11000.00",
+        "novo preço no histórico",
+    )
+    assert_equal(
+        latest_price_history["changed_by"],
+        RESOLVED_ADMIN_ACTOR,
+        "responsável pela alteração de preço",
+    )
+
+    print("Restaurando preço-base utilizado pela avaliação...")
+    restored_price = request_json(
+        method="PATCH",
+        path=("/cities/3550308/valuation-prices/APARTMENT"),
+        body={
+            "price_per_m2": "10500.00",
+        },
+        additional_headers={
+            "X-Admin-API-Key": (RESOLVED_ADMIN_API_KEY),
+        },
+    )
+
+    assert_equal(
+        restored_price["price_per_m2"],
+        "10500.00",
+        "preço-base restaurado",
     )
 
     external_order_id = f"INTEGRATION-{uuid.uuid4().hex[:12].upper()}"
@@ -399,7 +624,7 @@ def run_integration_test() -> None:
     print("Consultando ordem pelo identificador externo...")
     queried_order = request_json(
         method="GET",
-        path=f"/orders/external/{external_order_id}",
+        path=(f"/orders/external/{external_order_id}"),
     )
 
     assert_equal(
@@ -416,8 +641,10 @@ def run_integration_test() -> None:
     print("Atualizando status para VALIDATING_INPUT...")
     updated_order = request_json(
         method="PATCH",
-        path=f"/orders/{internal_order_id}/status",
-        body={"status": "VALIDATING_INPUT"},
+        path=(f"/orders/{internal_order_id}/status"),
+        body={
+            "status": "VALIDATING_INPUT",
+        },
     )
 
     assert_equal(
@@ -429,7 +656,7 @@ def run_integration_test() -> None:
     print("Calculando avaliação AVM...")
     created_valuation = request_json(
         method="POST",
-        path=f"/orders/{internal_order_id}/valuation",
+        path=(f"/orders/{internal_order_id}/valuation"),
         expected_status=201,
     )
 
@@ -443,7 +670,7 @@ def run_integration_test() -> None:
     print("Consultando avaliação AVM...")
     queried_valuation = request_json(
         method="GET",
-        path=f"/orders/{internal_order_id}/valuation",
+        path=(f"/orders/{internal_order_id}/valuation"),
     )
 
     validate_valuation(
@@ -472,7 +699,7 @@ def run_integration_test() -> None:
     print("Consultando histórico de status...")
     status_history = request_json(
         method="GET",
-        path=f"/orders/{internal_order_id}/status-history",
+        path=(f"/orders/{internal_order_id}/status-history"),
     )
 
     assert_equal(
@@ -508,7 +735,7 @@ def run_integration_test() -> None:
     print("Verificando idempotência da avaliação...")
     repeated_valuation = request_json(
         method="POST",
-        path=f"/orders/{internal_order_id}/valuation",
+        path=(f"/orders/{internal_order_id}/valuation"),
         expected_status=201,
     )
 
@@ -528,6 +755,136 @@ def run_integration_test() -> None:
 
     if duplicate_response is None:
         raise AssertionError("A resposta de duplicidade está vazia.")
+
+    refused_external_order_id = f"INTEGRATION-REFUSED-{uuid.uuid4().hex[:8].upper()}"
+
+    print("Preparando cidade temporaria sem preco-base...")
+    prepare_refusal_test_city()
+
+    try:
+        refused_payload = build_refused_order_payload(refused_external_order_id)
+
+        print(f"Criando ordem para recusa {refused_external_order_id}...")
+        refused_order = request_json(
+            method="POST",
+            path="/orders",
+            body=refused_payload,
+            expected_status=201,
+        )
+
+        refused_internal_order_id = refused_order["internal_order_id"]
+
+        assert_equal(
+            refused_order["status"],
+            "RECEIVED",
+            "status inicial da ordem de recusa",
+        )
+
+        print("Atualizando ordem de recusa para VALIDATING_INPUT...")
+        refused_validating_order = request_json(
+            method="PATCH",
+            path=(f"/orders/{refused_internal_order_id}/status"),
+            body={"status": "VALIDATING_INPUT"},
+        )
+
+        assert_equal(
+            refused_validating_order["status"],
+            "VALIDATING_INPUT",
+            "status da ordem antes da recusa",
+        )
+
+        print("Verificando recusa por ausencia de preco-base...")
+        refused_valuation_response = request_json(
+            method="POST",
+            path=(f"/orders/{refused_internal_order_id}/valuation"),
+            expected_status=409,
+        )
+
+        refusal_detail = refused_valuation_response["detail"]
+
+        assert_equal(
+            refusal_detail["code"],
+            "ORDER_REFUSED",
+            "codigo da resposta de ordem recusada",
+        )
+        assert_equal(
+            refusal_detail["internal_order_id"],
+            refused_internal_order_id,
+            "internal_order_id da resposta de recusa",
+        )
+        assert_equal(
+            refusal_detail["refusal_url"],
+            f"/orders/{refused_internal_order_id}/refusal",
+            "URL da recusa",
+        )
+
+        print("Consultando motivo da recusa...")
+        refusal = request_json(
+            method="GET",
+            path=(f"/orders/{refused_internal_order_id}/refusal"),
+        )
+
+        assert_equal(
+            refusal["internal_order_id"],
+            refused_internal_order_id,
+            "internal_order_id da recusa persistida",
+        )
+        assert_equal(
+            refusal["reason_code"],
+            "MISSING_BASE_PRICE",
+            "motivo estruturado da recusa",
+        )
+        assert_equal(
+            refusal["details"]["city_ibge_code"],
+            REFUSAL_CITY_IBGE_CODE,
+            "codigo IBGE nos detalhes da recusa",
+        )
+        assert_equal(
+            refusal["details"]["property_type"],
+            "APARTMENT",
+            "tipologia nos detalhes da recusa",
+        )
+
+        print("Confirmando status REFUSED da ordem...")
+        refused_order_after_valuation = request_json(
+            method="GET",
+            path=f"/orders/{refused_internal_order_id}",
+        )
+
+        assert_equal(
+            refused_order_after_valuation["status"],
+            "REFUSED",
+            "status final da ordem recusada",
+        )
+
+        print("Consultando historico da ordem recusada...")
+        refused_status_history = request_json(
+            method="GET",
+            path=(f"/orders/{refused_internal_order_id}/status-history"),
+        )
+
+        assert_equal(
+            len(refused_status_history),
+            2,
+            "quantidade de registros da ordem recusada",
+        )
+
+        refused_latest_history = refused_status_history[-1]
+
+        assert_equal(
+            refused_latest_history["previous_status"],
+            "VALIDATING_INPUT",
+            "status anterior da recusa",
+        )
+        assert_equal(
+            refused_latest_history["new_status"],
+            "REFUSED",
+            "novo status da recusa",
+        )
+
+    finally:
+        print("Removendo cidade temporaria do teste...")
+        remove_refusal_test_city()
 
     print("")
     print("Teste de integração concluído com sucesso.")
