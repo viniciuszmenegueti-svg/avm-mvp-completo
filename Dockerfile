@@ -17,6 +17,7 @@ RUN python -m pip install --upgrade pip \
 COPY alembic.ini .
 COPY migrations ./migrations
 COPY app ./app
+COPY engine ./engine
 COPY docker-entrypoint.sh .
 
 RUN chmod +x /app/docker-entrypoint.sh \
