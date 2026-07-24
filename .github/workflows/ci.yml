@@ -30,6 +30,7 @@ jobs:
       APP_ENV: test
       APP_DEBUG: "false"
       LOG_LEVEL: INFO
+      ADMIN_CREDENTIALS_JSON: '{"ci-admin":"ci_admin_key"}'
 
     steps:
       - name: Baixar o codigo
