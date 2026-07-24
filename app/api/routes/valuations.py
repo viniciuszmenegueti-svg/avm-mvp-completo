@@ -17,6 +17,7 @@ from app.schemas.valuation import ValuationResponse
 from app.services.valuation_service import (
     calculate_and_store_valuation,
 )
+from engine.exceptions import ValuationCalculationError
 from engine.registry import ModelVersionNotActiveError
 
 
@@ -64,7 +65,7 @@ def create_order_valuation(
                 "internal_order_id": order_id,
             },
         ) from error
-    except ValueError as error:
+    except ValuationCalculationError as error:
         raise HTTPException(
             status_code=(status.HTTP_422_UNPROCESSABLE_CONTENT),
             detail={

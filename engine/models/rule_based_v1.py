@@ -1,8 +1,15 @@
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 
-from app.schemas.property import PropertyInput, PropertyType
+from app.schemas.property import (
+    PropertyInput,
+    PropertyType,
+)
 from app.schemas.valuation import ValuationMethod
+from engine.exceptions import (
+    InvalidPricePerSquareMeterError,
+    ReferenceAreaNotFoundError,
+)
 
 
 MONEY_QUANTIZER = Decimal("0.01")
@@ -23,7 +30,9 @@ class ValuationCalculation:
     confidence_score: Decimal
 
 
-def quantize_money(value: Decimal) -> Decimal:
+def quantize_money(
+    value: Decimal,
+) -> Decimal:
     return value.quantize(
         MONEY_QUANTIZER,
         rounding=ROUND_HALF_UP,
@@ -41,7 +50,9 @@ def get_reference_area(
         area = property_data.land_area_m2
 
     if area is None:
-        raise ValueError("Não foi possível determinar a área de referência.")
+        raise ReferenceAreaNotFoundError(
+            property_type=property_data.property_type,
+        )
 
     return Decimal(str(area)).quantize(
         MONEY_QUANTIZER,
@@ -79,7 +90,9 @@ def calculate_valuation(
     price_per_m2: Decimal,
 ) -> ValuationCalculation:
     if price_per_m2 <= 0:
-        raise ValueError("O preço por metro quadrado deve ser maior que zero.")
+        raise InvalidPricePerSquareMeterError(
+            price_per_m2=price_per_m2,
+        )
 
     reference_area_m2 = get_reference_area(property_data)
 

@@ -1,9 +1,13 @@
+from decimal import Decimal
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
 from app.main import app
 from app.schemas.valuation import ValuationMethod
+from engine.exceptions import (
+    InvalidPricePerSquareMeterError,
+)
 from engine.registry import (
     ModelStatus,
     ModelVersionNotActiveError,
@@ -137,16 +141,20 @@ def test_returns_unprocessable_entity_for_calculation_error() -> None:
 
     move_order_to_validating_input(internal_order_id)
 
+    error = InvalidPricePerSquareMeterError(
+        price_per_m2=Decimal("0.00"),
+    )
+
     with patch(
         ("app.api.routes.valuations.calculate_and_store_valuation"),
-        side_effect=ValueError("Não existe preço-base configurado para a cidade."),
+        side_effect=error,
     ):
         response = client.post(f"/orders/{internal_order_id}/valuation")
 
     assert response.status_code == 422
     assert response.json()["detail"] == {
         "code": "VALUATION_CALCULATION_ERROR",
-        "message": ("Não existe preço-base configurado para a cidade."),
+        "message": ("O preço por metro quadrado deve ser maior que zero."),
         "internal_order_id": internal_order_id,
     }
 
