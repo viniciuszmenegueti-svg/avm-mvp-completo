@@ -1,5 +1,6 @@
 import json
 import os
+import subprocess
 import sys
 import time
 import uuid
@@ -127,6 +128,10 @@ RESOLVED_ADMIN_ACTOR, RESOLVED_ADMIN_API_KEY = resolve_admin_credentials()
 MAX_READY_ATTEMPTS = 30
 READY_INTERVAL_SECONDS = 2
 
+REFUSAL_CITY_IBGE_CODE = "9999999"
+REFUSAL_CITY_NAME = "Cidade de Integracao"
+REFUSAL_CITY_STATE = "ES"
+
 
 def request_json(
     method: str,
@@ -202,6 +207,64 @@ def assert_equal(
         )
 
 
+def execute_postgres_sql(sql: str) -> None:
+    command = [
+        "docker",
+        "compose",
+        "exec",
+        "-T",
+        "postgres",
+        "psql",
+        "-U",
+        "avm_app",
+        "-d",
+        "avm",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-c",
+        sql,
+    ]
+
+    result = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+
+    if result.returncode != 0:
+        raise RuntimeError(
+            "Falha ao executar comando no PostgreSQL. "
+            f"Saida: {result.stdout.strip()} "
+            f"Erro: {result.stderr.strip()}"
+        )
+
+
+def prepare_refusal_test_city() -> None:
+    execute_postgres_sql(
+        "DELETE FROM city_valuation_prices "
+        f"WHERE city_ibge_code = '{REFUSAL_CITY_IBGE_CODE}'; "
+        "DELETE FROM cities "
+        f"WHERE city_ibge_code = '{REFUSAL_CITY_IBGE_CODE}'; "
+        "INSERT INTO cities "
+        "(city_ibge_code, name, state, active) VALUES "
+        f"('{REFUSAL_CITY_IBGE_CODE}', "
+        f"'{REFUSAL_CITY_NAME}', "
+        f"'{REFUSAL_CITY_STATE}', true);"
+    )
+
+
+def remove_refusal_test_city() -> None:
+    execute_postgres_sql(
+        "DELETE FROM city_valuation_prices "
+        f"WHERE city_ibge_code = '{REFUSAL_CITY_IBGE_CODE}'; "
+        "DELETE FROM cities "
+        f"WHERE city_ibge_code = '{REFUSAL_CITY_IBGE_CODE}';"
+    )
+
+
 def wait_until_ready() -> None:
     print("Aguardando a API ficar pronta...")
 
@@ -246,6 +309,31 @@ def build_order_payload(
             "postal_code": "01001-000",
             "neighborhood": "Centro",
             "street": "Rua de Teste",
+            "number": "100",
+            "complement": "Apartamento 10",
+            "private_area_m2": 70,
+            "built_area_m2": 80,
+            "land_area_m2": None,
+            "bedrooms": 2,
+            "bathrooms": 2,
+            "parking_spaces": 1,
+        },
+    }
+
+
+def build_refused_order_payload(
+    external_order_id: str,
+) -> dict[str, Any]:
+    return {
+        "external_order_id": external_order_id,
+        "property": {
+            "property_type": "APARTMENT",
+            "state": REFUSAL_CITY_STATE,
+            "city": REFUSAL_CITY_NAME,
+            "city_ibge_code": REFUSAL_CITY_IBGE_CODE,
+            "postal_code": "29000-000",
+            "neighborhood": "Centro",
+            "street": "Rua de Integracao",
             "number": "100",
             "complement": "Apartamento 10",
             "private_area_m2": 70,
@@ -667,6 +755,136 @@ def run_integration_test() -> None:
 
     if duplicate_response is None:
         raise AssertionError("A resposta de duplicidade está vazia.")
+
+    refused_external_order_id = f"INTEGRATION-REFUSED-{uuid.uuid4().hex[:8].upper()}"
+
+    print("Preparando cidade temporaria sem preco-base...")
+    prepare_refusal_test_city()
+
+    try:
+        refused_payload = build_refused_order_payload(refused_external_order_id)
+
+        print(f"Criando ordem para recusa {refused_external_order_id}...")
+        refused_order = request_json(
+            method="POST",
+            path="/orders",
+            body=refused_payload,
+            expected_status=201,
+        )
+
+        refused_internal_order_id = refused_order["internal_order_id"]
+
+        assert_equal(
+            refused_order["status"],
+            "RECEIVED",
+            "status inicial da ordem de recusa",
+        )
+
+        print("Atualizando ordem de recusa para VALIDATING_INPUT...")
+        refused_validating_order = request_json(
+            method="PATCH",
+            path=(f"/orders/{refused_internal_order_id}/status"),
+            body={"status": "VALIDATING_INPUT"},
+        )
+
+        assert_equal(
+            refused_validating_order["status"],
+            "VALIDATING_INPUT",
+            "status da ordem antes da recusa",
+        )
+
+        print("Verificando recusa por ausencia de preco-base...")
+        refused_valuation_response = request_json(
+            method="POST",
+            path=(f"/orders/{refused_internal_order_id}/valuation"),
+            expected_status=409,
+        )
+
+        refusal_detail = refused_valuation_response["detail"]
+
+        assert_equal(
+            refusal_detail["code"],
+            "ORDER_REFUSED",
+            "codigo da resposta de ordem recusada",
+        )
+        assert_equal(
+            refusal_detail["internal_order_id"],
+            refused_internal_order_id,
+            "internal_order_id da resposta de recusa",
+        )
+        assert_equal(
+            refusal_detail["refusal_url"],
+            f"/orders/{refused_internal_order_id}/refusal",
+            "URL da recusa",
+        )
+
+        print("Consultando motivo da recusa...")
+        refusal = request_json(
+            method="GET",
+            path=(f"/orders/{refused_internal_order_id}/refusal"),
+        )
+
+        assert_equal(
+            refusal["internal_order_id"],
+            refused_internal_order_id,
+            "internal_order_id da recusa persistida",
+        )
+        assert_equal(
+            refusal["reason_code"],
+            "MISSING_BASE_PRICE",
+            "motivo estruturado da recusa",
+        )
+        assert_equal(
+            refusal["details"]["city_ibge_code"],
+            REFUSAL_CITY_IBGE_CODE,
+            "codigo IBGE nos detalhes da recusa",
+        )
+        assert_equal(
+            refusal["details"]["property_type"],
+            "APARTMENT",
+            "tipologia nos detalhes da recusa",
+        )
+
+        print("Confirmando status REFUSED da ordem...")
+        refused_order_after_valuation = request_json(
+            method="GET",
+            path=f"/orders/{refused_internal_order_id}",
+        )
+
+        assert_equal(
+            refused_order_after_valuation["status"],
+            "REFUSED",
+            "status final da ordem recusada",
+        )
+
+        print("Consultando historico da ordem recusada...")
+        refused_status_history = request_json(
+            method="GET",
+            path=(f"/orders/{refused_internal_order_id}/status-history"),
+        )
+
+        assert_equal(
+            len(refused_status_history),
+            2,
+            "quantidade de registros da ordem recusada",
+        )
+
+        refused_latest_history = refused_status_history[-1]
+
+        assert_equal(
+            refused_latest_history["previous_status"],
+            "VALIDATING_INPUT",
+            "status anterior da recusa",
+        )
+        assert_equal(
+            refused_latest_history["new_status"],
+            "REFUSED",
+            "novo status da recusa",
+        )
+
+    finally:
+        print("Removendo cidade temporaria do teste...")
+        remove_refusal_test_city()
 
     print("")
     print("Teste de integração concluído com sucesso.")
