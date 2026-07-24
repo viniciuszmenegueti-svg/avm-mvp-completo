@@ -10,9 +10,13 @@ from app.domain.exceptions import (
     InvalidOrderStatusTransitionError,
 )
 from app.infrastructure.dependencies import DatabaseSession
+from app.repositories.orders_sqlalchemy import (
+    get_order_by_internal_id,
+)
 from app.repositories.valuations_sqlalchemy import (
     get_valuation_by_internal_order_id,
 )
+from app.schemas.order import OrderStatus
 from app.schemas.valuation import ValuationResponse
 from app.services.valuation_service import (
     calculate_and_store_valuation,
@@ -67,7 +71,7 @@ def create_order_valuation(
         ) from error
     except ValuationCalculationError as error:
         raise HTTPException(
-            status_code=(status.HTTP_422_UNPROCESSABLE_CONTENT),
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={
                 "code": "VALUATION_CALCULATION_ERROR",
                 "message": str(error),
@@ -76,11 +80,37 @@ def create_order_valuation(
         ) from error
 
     if valuation is None:
+        order = get_order_by_internal_id(
+            session=session,
+            internal_order_id=order_id,
+        )
+
+        if order is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "code": "ORDER_NOT_FOUND",
+                    "message": "Ordem de Serviço não encontrada.",
+                    "internal_order_id": order_id,
+                },
+            )
+
+        if order.status == OrderStatus.REFUSED:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "ORDER_REFUSED",
+                    "message": ("A Ordem de Serviço foi recusada durante a avaliação."),
+                    "internal_order_id": order_id,
+                    "refusal_url": f"/orders/{order_id}/refusal",
+                },
+            )
+
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status.HTTP_409_CONFLICT,
             detail={
-                "code": "ORDER_NOT_FOUND",
-                "message": ("Ordem de Serviço não encontrada."),
+                "code": "VALUATION_NOT_CREATED",
+                "message": "A avaliação AVM não pôde ser criada.",
                 "internal_order_id": order_id,
             },
         )
@@ -109,7 +139,7 @@ def get_order_valuation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
                 "code": "VALUATION_NOT_FOUND",
-                "message": ("Avaliação AVM não encontrada."),
+                "message": "Avaliação AVM não encontrada.",
                 "internal_order_id": order_id,
             },
         )

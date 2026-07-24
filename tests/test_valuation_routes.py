@@ -42,12 +42,50 @@ def apartment_payload(
     }
 
 
+def house_without_base_price_payload(
+    external_order_id: str,
+) -> dict[str, object]:
+    return {
+        "external_order_id": external_order_id,
+        "property": {
+            "property_type": "HOUSE",
+            "state": "RJ",
+            "city": "Rio de Janeiro",
+            "city_ibge_code": "3304557",
+            "postal_code": "20010-000",
+            "neighborhood": "Centro",
+            "street": "Rua de Teste",
+            "number": "100",
+            "complement": None,
+            "private_area_m2": 120,
+            "built_area_m2": 140,
+            "land_area_m2": 200,
+            "bedrooms": 3,
+            "bathrooms": 2,
+            "parking_spaces": 2,
+        },
+    }
+
+
 def create_order(
     external_order_id: str,
 ) -> str:
     response = client.post(
         "/orders",
         json=apartment_payload(external_order_id),
+    )
+
+    assert response.status_code == 201
+
+    return response.json()["internal_order_id"]
+
+
+def create_house_without_base_price(
+    external_order_id: str,
+) -> str:
+    response = client.post(
+        "/orders",
+        json=house_without_base_price_payload(external_order_id),
     )
 
     assert response.status_code == 201
@@ -118,6 +156,27 @@ def test_returns_not_found_for_unknown_order() -> None:
     assert response.json()["detail"]["code"] == "ORDER_NOT_FOUND"
 
 
+def test_returns_conflict_when_order_is_refused() -> None:
+    internal_order_id = create_house_without_base_price("VALUATION-ROUTE-REFUSED-001")
+
+    move_order_to_validating_input(internal_order_id)
+
+    response = client.post(f"/orders/{internal_order_id}/valuation")
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == {
+        "code": "ORDER_REFUSED",
+        "message": "A Ordem de Serviço foi recusada durante a avaliação.",
+        "internal_order_id": internal_order_id,
+        "refusal_url": f"/orders/{internal_order_id}/refusal",
+    }
+
+    order_response = client.get(f"/orders/{internal_order_id}")
+
+    assert order_response.status_code == 200
+    assert order_response.json()["status"] == "REFUSED"
+
+
 def test_returns_not_found_for_unknown_valuation() -> None:
     internal_order_id = create_order("VALUATION-ROUTE-003")
 
@@ -154,7 +213,7 @@ def test_returns_unprocessable_entity_for_calculation_error() -> None:
     assert response.status_code == 422
     assert response.json()["detail"] == {
         "code": "VALUATION_CALCULATION_ERROR",
-        "message": ("O preço por metro quadrado deve ser maior que zero."),
+        "message": "O preço por metro quadrado deve ser maior que zero.",
         "internal_order_id": internal_order_id,
     }
 
