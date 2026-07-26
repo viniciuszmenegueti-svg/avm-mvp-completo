@@ -68,11 +68,13 @@ def create_property_asset(
             },
         )
 
-    return create_property_asset_in_database(
+    database_property_asset = create_property_asset_in_database(
         session=session,
         property_asset_id=str(uuid4()),
         property_asset=property_asset,
     )
+
+    return PropertyAssetResponse.model_validate(database_property_asset)
 
 
 @router.get(
@@ -98,11 +100,13 @@ def list_property_assets(
         city_ibge_code=city_ibge_code,
     )
 
+    response_items = [PropertyAssetResponse.model_validate(asset) for asset in assets]
+
     return PropertyAssetListResponse(
         total=total,
         limit=limit,
         offset=offset,
-        items=assets,
+        items=response_items,
     )
 
 
@@ -130,7 +134,7 @@ def get_property_asset(
             },
         )
 
-    return property_asset
+    return PropertyAssetResponse.model_validate(property_asset)
 
 
 @router.patch(
@@ -159,4 +163,4 @@ def update_property_asset(
             },
         )
 
-    return property_asset
+    return PropertyAssetResponse.model_validate(property_asset)
