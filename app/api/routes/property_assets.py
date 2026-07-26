@@ -45,8 +45,7 @@ def create_property_asset(
             detail={
                 "code": "UNSUPPORTED_CITY",
                 "message": (
-                    "A cidade informada não está habilitada "
-                    "para cadastro de imóveis."
+                    "A cidade informada não está habilitada para cadastro de imóveis."
                 ),
                 "city_ibge_code": property_asset.city_ibge_code,
             },
@@ -63,8 +62,7 @@ def create_property_asset(
             detail={
                 "code": "DUPLICATE_PROPERTY_ASSET",
                 "message": (
-                    "Já existe um imóvel cadastrado "
-                    "para este endereço e unidade."
+                    "Já existe um imóvel cadastrado para este endereço e unidade."
                 ),
                 "property_asset_id": duplicate.property_asset_id,
             },
