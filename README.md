@@ -611,3 +611,70 @@ O projeto inclui:
 ## Licença
 
 Projeto em desenvolvimento para fins de estudo, demonstração técnica e evolução de um modelo automatizado de avaliação imobiliária.
+
+## Funcionalidades adicionadas no MVP v0.3.0
+
+- Cadastro, consulta, listagem, filtro e atualização de imóveis persistentes
+- Detecção de imóvel duplicado pelo endereço e complemento
+- Criação de Ordem de Serviço a partir de imóvel previamente cadastrado
+- Vínculo rastreável entre ordem e imóvel cadastrado
+- Persistência dos fatores utilizados no cálculo AVM
+- Explicação textual do índice de confiança
+- Endpoint administrativo de diagnóstico operacional
+
+### Endpoints de imóveis
+
+```text
+POST  /property-assets
+GET   /property-assets
+GET   /property-assets/{property_asset_id}
+PATCH /property-assets/{property_asset_id}
+```
+
+### Ordem a partir de imóvel cadastrado
+
+```text
+POST /orders/from-property-asset
+```
+
+Payload:
+
+```json
+{
+  "external_order_id": "CX-2026-000100",
+  "property_asset_id": "00000000-0000-0000-0000-000000000001"
+}
+```
+
+### Diagnóstico administrativo
+
+```text
+GET /admin/diagnostics
+X-Admin-API-Key: <chave configurada>
+```
+
+O diagnóstico retorna conectividade com o banco, contagem de ordens, imóveis,
+avaliações e distribuição das ordens por status.
+
+### Explicabilidade da avaliação
+
+A resposta de avaliação agora contém:
+
+```json
+{
+  "factors": {
+    "base_price_per_m2": "10500.00",
+    "reference_area_m2": "72.50",
+    "area_factor": "1.0000",
+    "location_factor": "1.0000",
+    "characteristics_factor": "1.0000"
+  },
+  "confidence_reasons": [
+    "Preço-base disponível para cidade e tipologia.",
+    "Área de referência válida."
+  ]
+}
+```
+
+Os fatores atuais são determinísticos e transparentes. Os valores-base continuam
+demonstrativos e não substituem dados reais de mercado ou laudo técnico.

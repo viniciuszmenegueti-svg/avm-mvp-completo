@@ -50,3 +50,8 @@ class OrderStatusUpdate(BaseModel):
         description="Novo status da Ordem de Serviço",
         examples=["VALIDATING_INPUT"],
     )
+
+
+class OrderFromPropertyAssetCreate(BaseModel):
+    external_order_id: str = Field(min_length=3, max_length=100)
+    property_asset_id: str = Field(min_length=36, max_length=36)

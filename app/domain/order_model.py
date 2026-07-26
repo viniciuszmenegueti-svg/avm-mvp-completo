@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, Text
+from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
@@ -34,6 +34,13 @@ class OrderModel(Base):
     received_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
+    )
+
+    property_asset_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("property_assets.property_asset_id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
 
     property_json: Mapped[str] = mapped_column(

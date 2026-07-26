@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 
 from app.schemas.property import (
@@ -28,6 +28,8 @@ class ValuationCalculation:
     price_per_m2: Decimal
     reference_area_m2: Decimal
     confidence_score: Decimal
+    factors: dict[str, str] = field(default_factory=dict)
+    confidence_reasons: list[str] = field(default_factory=list)
 
 
 def quantize_money(
@@ -60,9 +62,9 @@ def get_reference_area(
     )
 
 
-def calculate_confidence_score(
+def calculate_confidence_details(
     property_data: PropertyInput,
-) -> Decimal:
+) -> tuple[Decimal, list[str]]:
     score = Decimal("0.6000")
 
     optional_fields = (
@@ -75,14 +77,22 @@ def calculate_confidence_score(
     completed_fields = sum(field is not None for field in optional_fields)
 
     score += Decimal(completed_fields) * Decimal("0.0500")
-
-    return min(
-        score,
-        Decimal("0.8000"),
-    ).quantize(
-        SCORE_QUANTIZER,
-        rounding=ROUND_HALF_UP,
+    reasons = [
+        "Preço-base disponível para cidade e tipologia.",
+        "Área de referência válida.",
+    ]
+    if completed_fields:
+        reasons.append(f"{completed_fields} atributos complementares informados.")
+    else:
+        reasons.append("Atributos complementares não informados reduzem a confiança.")
+    normalized = min(score, Decimal("0.8000")).quantize(
+        SCORE_QUANTIZER, rounding=ROUND_HALF_UP
     )
+    return normalized, reasons
+
+
+def calculate_confidence_score(property_data: PropertyInput) -> Decimal:
+    return calculate_confidence_details(property_data)[0]
 
 
 def calculate_valuation(
@@ -104,7 +114,7 @@ def calculate_valuation(
 
     maximum_value = quantize_money(estimated_value * MAXIMUM_FACTOR)
 
-    confidence_score = calculate_confidence_score(property_data)
+    confidence_score, confidence_reasons = calculate_confidence_details(property_data)
 
     return ValuationCalculation(
         method=ValuationMethod.RULE_BASED_V1,
@@ -114,4 +124,12 @@ def calculate_valuation(
         price_per_m2=normalized_price_per_m2,
         reference_area_m2=reference_area_m2,
         confidence_score=confidence_score,
+        factors={
+            "base_price_per_m2": str(normalized_price_per_m2),
+            "reference_area_m2": str(reference_area_m2),
+            "area_factor": "1.0000",
+            "location_factor": "1.0000",
+            "characteristics_factor": "1.0000",
+        },
+        confidence_reasons=confidence_reasons,
     )

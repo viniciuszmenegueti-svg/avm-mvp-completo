@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from starlette.types import ExceptionHandler
 
+from app.api.routes.admin_diagnostics import router as admin_diagnostics_router
 from app.api.routes.cities import router as cities_router
 from app.api.routes.health import router as health_router
 from app.api.routes.model_versions import (
@@ -16,6 +17,9 @@ from app.api.routes.order_status_history import (
     router as order_status_history_router,
 )
 from app.api.routes.orders import router as orders_router
+from app.api.routes.property_assets import (
+    router as property_assets_router,
+)
 from app.api.routes.valuations import router as valuations_router
 from app.core.config import (
     APP_DEBUG,
@@ -75,7 +79,9 @@ def root() -> dict[str, str]:
 
 
 app.include_router(health_router)
+app.include_router(admin_diagnostics_router)
 app.include_router(orders_router)
+app.include_router(property_assets_router)
 app.include_router(valuations_router)
 app.include_router(order_refusals_router)
 app.include_router(order_status_history_router)
