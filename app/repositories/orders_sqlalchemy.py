@@ -23,12 +23,14 @@ def create_order(
     order: OrderCreate,
     internal_order_id: str,
     received_at: datetime,
+    property_asset_id: str | None = None,
 ) -> OrderResponse:
     database_order = OrderModel(
         internal_order_id=internal_order_id,
         external_order_id=order.external_order_id,
         status=OrderStatus.RECEIVED.value,
         received_at=received_at,
+        property_asset_id=property_asset_id,
         property_json=order.property.model_dump_json(),
     )
 

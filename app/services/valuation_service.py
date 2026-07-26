@@ -138,6 +138,8 @@ def calculate_and_store_valuation(
             price_per_m2=calculation.price_per_m2,
             reference_area_m2=(calculation.reference_area_m2),
             confidence_score=(calculation.confidence_score),
+            factors=calculation.factors,
+            confidence_reasons=calculation.confidence_reasons,
             calculated_at=datetime.now(timezone.utc),
             commit=False,
         )

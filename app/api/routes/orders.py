@@ -26,6 +26,7 @@ from app.repositories.orders_sqlalchemy import (
 )
 from app.schemas.order import (
     OrderCreate,
+    OrderFromPropertyAssetCreate,
     OrderListResponse,
     OrderResponse,
     OrderStatus,
@@ -237,3 +238,85 @@ def get_order(
         )
 
     return order
+
+
+@router.post(
+    "/from-property-asset",
+    response_model=OrderResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Cria uma ordem a partir de um imóvel cadastrado",
+)
+def create_order_from_property_asset(
+    request: OrderFromPropertyAssetCreate,
+    session: DatabaseSession,
+) -> OrderResponse:
+    from app.repositories.cities_sqlalchemy import get_active_city_by_ibge_code
+    from app.repositories.property_assets_sqlalchemy import get_property_asset_by_id
+    from app.schemas.property import PropertyInput, PropertyType
+
+    existing_order = get_order_by_external_id(
+        session=session, external_order_id=request.external_order_id
+    )
+    if existing_order is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "DUPLICATE_EXTERNAL_ORDER_ID",
+                "message": "Já existe uma Ordem de Serviço com este external_order_id.",
+                "external_order_id": request.external_order_id,
+                "internal_order_id": existing_order.internal_order_id,
+            },
+        )
+    asset = get_property_asset_by_id(
+        session=session, property_asset_id=request.property_asset_id
+    )
+    if asset is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "PROPERTY_ASSET_NOT_FOUND",
+                "message": "Imóvel não encontrado.",
+                "property_asset_id": request.property_asset_id,
+            },
+        )
+    city = get_active_city_by_ibge_code(
+        session=session, city_ibge_code=asset.city_ibge_code
+    )
+    if city is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={"code": "UNSUPPORTED_CITY"},
+        )
+    property_input = PropertyInput(
+        property_type=PropertyType(asset.property_type),
+        state=city.state,
+        city=city.name,
+        city_ibge_code=asset.city_ibge_code,
+        postal_code=asset.postal_code,
+        neighborhood=asset.neighborhood,
+        street=asset.street,
+        number=asset.number,
+        complement=asset.complement,
+        private_area_m2=float(asset.private_area_m2)
+        if asset.private_area_m2 is not None
+        else None,
+        built_area_m2=float(asset.built_area_m2)
+        if asset.built_area_m2 is not None
+        else None,
+        land_area_m2=float(asset.land_area_m2)
+        if asset.land_area_m2 is not None
+        else None,
+        bedrooms=asset.bedrooms,
+        bathrooms=asset.bathrooms,
+        parking_spaces=asset.parking_spaces,
+    )
+    order = OrderCreate(
+        external_order_id=request.external_order_id, property=property_input
+    )
+    return create_order_in_database(
+        session=session,
+        order=order,
+        internal_order_id=str(uuid4()),
+        received_at=datetime.now(timezone.utc),
+        property_asset_id=asset.property_asset_id,
+    )
