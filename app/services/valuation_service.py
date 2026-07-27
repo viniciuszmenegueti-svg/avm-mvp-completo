@@ -5,12 +5,11 @@ from sqlalchemy.orm import Session
 
 from app.core.config import ALLOW_SYNTHETIC_PRICING
 from app.repositories.city_valuation_prices_sqlalchemy import get_city_valuation_price
-from app.repositories.order_refusals_sqlalchemy import create_order_refusal
-from app.repositories.order_status_history_sqlalchemy import create_order_status_history
 from app.repositories.orders_sqlalchemy import (
     get_order_by_internal_id,
     update_order_status,
 )
+from app.repositories.order_status_history_sqlalchemy import create_order_status_history
 from app.repositories.valuations_sqlalchemy import (
     create_valuation,
     get_valuation_by_internal_order_id,
@@ -18,49 +17,9 @@ from app.repositories.valuations_sqlalchemy import (
 from app.schemas.order import OrderStatus
 from app.schemas.order_refusal import OrderRefusalCreate, OrderRefusalReason
 from app.schemas.valuation import ValuationResponse
+from app.services.order_refusal_service import refuse_order_with_evidence
 from app.services.order_status import validate_order_status_transition
 from engine.registry import DEFAULT_MODEL_METHOD, get_active_model_version
-
-
-def _refuse_order(
-    session: Session,
-    internal_order_id: str,
-    current_status: OrderStatus,
-    refusal: OrderRefusalCreate,
-) -> None:
-    validate_order_status_transition(
-        current_status=current_status,
-        new_status=OrderStatus.REFUSED,
-    )
-    try:
-        create_order_refusal(
-            session=session,
-            refusal_id=str(uuid4()),
-            internal_order_id=internal_order_id,
-            refusal=refusal,
-            refused_at=datetime.now(timezone.utc),
-            commit=False,
-        )
-        updated_order = update_order_status(
-            session=session,
-            internal_order_id=internal_order_id,
-            new_status=OrderStatus.REFUSED,
-            commit=False,
-        )
-        if updated_order is None:
-            session.rollback()
-            return
-        create_order_status_history(
-            session=session,
-            internal_order_id=internal_order_id,
-            previous_status=current_status,
-            new_status=OrderStatus.REFUSED,
-            commit=False,
-        )
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
 
 
 def calculate_and_store_valuation(
@@ -68,14 +27,18 @@ def calculate_and_store_valuation(
     internal_order_id: str,
 ) -> ValuationResponse | None:
     order = get_order_by_internal_id(
-        session=session, internal_order_id=internal_order_id
+        session=session,
+        internal_order_id=internal_order_id,
     )
+
     if order is None:
         return None
 
     existing_valuation = get_valuation_by_internal_order_id(
-        session=session, internal_order_id=internal_order_id
+        session=session,
+        internal_order_id=internal_order_id,
     )
+
     if existing_valuation is not None:
         return existing_valuation
 
@@ -99,16 +62,23 @@ def calculate_and_store_valuation(
                 "O modelo estatístico não permite precificar o imóvel: "
                 "não há modelo/dataset aplicável à cidade e tipologia."
             ),
-            evidence={**evidence, "condition": "MODEL_OR_DATASET_UNAVAILABLE"},
+            evidence={
+                **evidence,
+                "condition": "MODEL_OR_DATASET_UNAVAILABLE",
+            },
             details=evidence,
             model_version=None,
             dataset_version=None,
         )
-        _refuse_order(session, internal_order_id, order.status, refusal)
+
+        refuse_order_with_evidence(
+            session=session,
+            internal_order_id=internal_order_id,
+            refusal=refusal,
+        )
+
         return None
 
-    # O cadastro city_valuation_prices é demonstrativo, não um dataset/modelo NBR.
-    # Em operação contratual o fallback sintético é proibido.
     if not ALLOW_SYNTHETIC_PRICING:
         refusal = OrderRefusalCreate(
             reason_code=OrderRefusalReason.MODEL_NOT_APPLICABLE,
@@ -127,14 +97,25 @@ def calculate_and_store_valuation(
             model_version="RULE_BASED_V1/1.0.0",
             dataset_version=None,
         )
-        _refuse_order(session, internal_order_id, order.status, refusal)
+
+        refuse_order_with_evidence(
+            session=session,
+            internal_order_id=internal_order_id,
+            refusal=refusal,
+        )
+
         return None
 
     validate_order_status_transition(
-        current_status=order.status, new_status=OrderStatus.COMPLETED
+        current_status=order.status,
+        new_status=OrderStatus.COMPLETED,
     )
+
     model_version = get_active_model_version(DEFAULT_MODEL_METHOD)
-    calculation = model_version.calculator(order.property, city_price.price_per_m2)
+    calculation = model_version.calculator(
+        order.property,
+        city_price.price_per_m2,
+    )
 
     try:
         valuation = create_valuation(
@@ -154,15 +135,18 @@ def calculate_and_store_valuation(
             calculated_at=datetime.now(timezone.utc),
             commit=False,
         )
+
         updated_order = update_order_status(
             session=session,
             internal_order_id=internal_order_id,
             new_status=OrderStatus.COMPLETED,
             commit=False,
         )
+
         if updated_order is None:
             session.rollback()
             return None
+
         create_order_status_history(
             session=session,
             internal_order_id=internal_order_id,
@@ -170,8 +154,11 @@ def calculate_and_store_valuation(
             new_status=OrderStatus.COMPLETED,
             commit=False,
         )
+
         session.commit()
+
         return valuation
+
     except Exception:
         session.rollback()
         raise
