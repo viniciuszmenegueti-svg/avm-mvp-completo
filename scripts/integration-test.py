@@ -831,8 +831,8 @@ def run_integration_test() -> None:
         )
         assert_equal(
             refusal["reason_code"],
-            "MISSING_BASE_PRICE",
-            "motivo estruturado da recusa",
+            "TR_9_5_A",
+            "motivo contratual estruturado da recusa",
         )
         assert_equal(
             refusal["details"]["city_ibge_code"],

@@ -12,7 +12,7 @@ from app.schemas.order_refusal import (
 
 def valid_refusal_payload() -> dict[str, object]:
     return {
-        "reason_code": "MISSING_BASE_PRICE",
+        "reason_code": "TR_9_5_A",
         "message": ("Não existe preço-base configurado para a cidade e tipologia."),
         "details": {
             "city_ibge_code": "3550308",
@@ -24,7 +24,7 @@ def valid_refusal_payload() -> dict[str, object]:
 def test_accepts_valid_order_refusal_create() -> None:
     refusal = OrderRefusalCreate.model_validate(valid_refusal_payload())
 
-    assert refusal.reason_code == OrderRefusalReason.MISSING_BASE_PRICE
+    assert refusal.reason_code == OrderRefusalReason.MODEL_NOT_APPLICABLE
     assert refusal.details["city_ibge_code"] == "3550308"
 
 
@@ -46,7 +46,7 @@ def test_accepts_valid_order_refusal_response() -> None:
 def test_uses_empty_details_by_default() -> None:
     refusal = OrderRefusalCreate.model_validate(
         {
-            "reason_code": "LOW_CONFIDENCE",
+            "reason_code": "TR_9_5_D",
             "message": "A confiança da avaliação ficou abaixo do limite.",
         }
     )
