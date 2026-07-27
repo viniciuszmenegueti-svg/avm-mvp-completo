@@ -38,6 +38,9 @@ from app.services.order_conflict_of_interest_refusal_service import (
 from app.services.order_data_inconsistency_refusal_service import (
     refuse_order_for_city_data_mismatch,
 )
+from app.services.order_location_not_confirmed_refusal_service import (
+    refuse_order_for_unconfirmed_location,
+)
 from app.services.order_status_update import (
     update_order_status_with_history,
 )
@@ -89,6 +92,36 @@ def create_order(
         )
 
         refused_order = refuse_order_for_conflict_of_interest(
+            session=session,
+            internal_order_id=internal_order_id,
+            order=order,
+        )
+
+        if refused_order is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={
+                    "code": "ORDER_REFUSAL_FAILED",
+                    "message": (
+                        "A ordem foi criada, mas não foi possível registrar a recusa."
+                    ),
+                    "internal_order_id": created_order.internal_order_id,
+                },
+            )
+
+        return refused_order
+
+    if not order.location_confirmation.is_confirmed:
+        internal_order_id = str(uuid4())
+
+        created_order = create_order_in_database(
+            session=session,
+            order=order,
+            internal_order_id=internal_order_id,
+            received_at=datetime.now(timezone.utc),
+        )
+
+        refused_order = refuse_order_for_unconfirmed_location(
             session=session,
             internal_order_id=internal_order_id,
             order=order,
@@ -306,7 +339,9 @@ def create_order_from_property_asset(
     request: OrderFromPropertyAssetCreate,
     session: DatabaseSession,
 ) -> OrderResponse:
-    from app.repositories.cities_sqlalchemy import get_active_city_by_ibge_code
+    from app.repositories.cities_sqlalchemy import (
+        get_active_city_by_ibge_code,
+    )
     from app.repositories.property_assets_sqlalchemy import (
         get_property_asset_by_id,
     )

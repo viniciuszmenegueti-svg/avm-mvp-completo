@@ -236,6 +236,54 @@ def test_refuses_order_when_conflict_of_interest_is_declared() -> None:
     }
 
 
+def test_refuses_order_when_location_is_not_confirmed() -> None:
+    payload = apartment_payload("LOCATION-NOT-CONFIRMED-001")
+
+    payload["location_confirmation"] = {
+        "is_confirmed": False,
+        "confirmation_method": "DOCUMENT_VALIDATION",
+        "evidence_reference": "MATRICULA-NAO-LOCALIZADA",
+        "failure_reason": (
+            "O endereço informado não pôde ser confirmado pelas evidências disponíveis."
+        ),
+        "verified_by": "VALIDATION_PIPELINE",
+    }
+
+    response = client.post(
+        "/orders",
+        json=payload,
+    )
+
+    assert response.status_code == 201
+
+    response_body = response.json()
+
+    assert response_body["external_order_id"] == "LOCATION-NOT-CONFIRMED-001"
+    assert response_body["status"] == "REFUSED"
+
+    internal_order_id = response_body["internal_order_id"]
+
+    refusal_response = client.get(
+        f"/orders/{internal_order_id}/refusal",
+    )
+
+    assert refusal_response.status_code == 200
+
+    refusal = refusal_response.json()
+
+    assert refusal["reason_code"] == "TR_9_5_D"
+    assert refusal["contract_reference"] == "TR §9.5(d) e §9.6"
+    assert refusal["evidence"] == {
+        "condition": "LOCATION_NOT_CONFIRMED",
+        "confirmation_method": "DOCUMENT_VALIDATION",
+        "evidence_reference": "MATRICULA-NAO-LOCALIZADA",
+        "failure_reason": (
+            "O endereço informado não pôde ser confirmado pelas evidências disponíveis."
+        ),
+        "verified_by": "VALIDATION_PIPELINE",
+    }
+
+
 def test_list_orders_when_database_is_empty() -> None:
     response = client.get("/orders")
 
