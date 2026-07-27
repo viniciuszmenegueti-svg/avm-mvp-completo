@@ -66,7 +66,7 @@ def test_gets_order_refusal() -> None:
     internal_order_id = create_test_order("REFUSAL-API-001")
 
     refusal = OrderRefusalCreate(
-        reason_code=OrderRefusalReason.MISSING_BASE_PRICE,
+        reason_code=OrderRefusalReason.MODEL_NOT_APPLICABLE,
         message=("Não existe preço-base configurado para a cidade e tipologia."),
         details={
             "city_ibge_code": "3550308",
@@ -91,7 +91,7 @@ def test_gets_order_refusal() -> None:
 
     assert body["refusal_id"] == created_refusal.refusal_id
     assert body["internal_order_id"] == internal_order_id
-    assert body["reason_code"] == "MISSING_BASE_PRICE"
+    assert body["reason_code"] == "TR_9_5_A"
     assert body["message"] == (
         "Não existe preço-base configurado para a cidade e tipologia."
     )

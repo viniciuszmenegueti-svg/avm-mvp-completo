@@ -60,7 +60,7 @@ API para recebimento, validação, processamento e avaliação automatizada de i
 
 O método `RULE_BASED_V1` é uma implementação inicial e demonstrativa.
 
-Os preços-base por metro quadrado utilizados atualmente são valores demonstrativos persistidos no banco de dados para validação técnica do fluxo. Eles não devem ser considerados valores reais de mercado nem utilizados para emissão de laudos imobiliários.
+Os preços-base por metro quadrado utilizados atualmente são valores demonstrativos persistidos no banco de dados para validação técnica do fluxo. Eles não devem ser considerados valores reais de mercado nem utilizados para emissão de laudos imobiliários. Por segurança, o cálculo sintético fica bloqueado por padrão (`ALLOW_SYNTHETIC_PRICING=false`); sem modelo/dataset aplicável, a ordem é recusada pelo motivo contratual `TR_9_5_A`.
 
 Uma versão futura poderá utilizar:
 
@@ -400,9 +400,10 @@ Exemplo de resposta:
 {
   "refusal_id": "UUID-DA-RECUSA",
   "internal_order_id": "UUID-DA-ORDEM",
-  "reason_code": "MISSING_BASE_PRICE",
-  "message": "Não existe preço-base configurado para a cidade e tipologia.",
-  "details": {
+  "reason_code": "TR_9_5_A",
+  "contract_reference": "TR §9.5(a) e §9.6",
+  "message": "O modelo estatístico não permite precificar o imóvel.",
+  "evidence": {
     "city_ibge_code": "3550308",
     "property_type": "APARTMENT"
   },

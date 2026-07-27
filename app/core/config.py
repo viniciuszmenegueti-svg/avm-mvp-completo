@@ -50,3 +50,12 @@ ADMIN_ACTOR = os.getenv(
     "ADMIN_ACTOR",
     "",
 ).strip()
+
+
+def _env_flag(name: str, default: str = "false") -> bool:
+    return os.getenv(name, default).lower() in {"1", "true", "yes", "on"}
+
+
+# Proteção contratual: o modelo RULE_BASED_V1 usa preços-base demonstrativos.
+# Ele só pode calcular quando esta flag estiver explicitamente habilitada.
+ALLOW_SYNTHETIC_PRICING = _env_flag("ALLOW_SYNTHETIC_PRICING", "false")
