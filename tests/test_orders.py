@@ -150,7 +150,7 @@ def test_rejects_order_from_unsupported_city() -> None:
     }
 
 
-def test_rejects_order_when_city_does_not_match_ibge_code() -> None:
+def test_refuses_order_when_city_does_not_match_ibge_code() -> None:
     payload = apartment_payload("CITY-MISMATCH-001")
 
     payload["property"]["state"] = "RJ"
@@ -162,16 +162,30 @@ def test_rejects_order_when_city_does_not_match_ibge_code() -> None:
         json=payload,
     )
 
-    assert response.status_code == 422
+    assert response.status_code == 201
 
-    detail = response.json()["detail"]
+    response_body = response.json()
 
-    assert detail == {
-        "code": "CITY_DATA_MISMATCH",
-        "message": (
-            "O nome da cidade ou a UF não corresponde ao código IBGE informado."
-        ),
+    assert response_body["external_order_id"] == "CITY-MISMATCH-001"
+    assert response_body["status"] == "REFUSED"
+
+    internal_order_id = response_body["internal_order_id"]
+
+    refusal_response = client.get(
+        f"/orders/{internal_order_id}/refusal",
+    )
+
+    assert refusal_response.status_code == 200
+
+    refusal = refusal_response.json()
+
+    assert refusal["reason_code"] == "TR_9_5_B"
+    assert refusal["contract_reference"] == "TR §9.5(b) e §9.6"
+    assert refusal["evidence"] == {
+        "condition": "CITY_DATA_MISMATCH",
         "city_ibge_code": "3550308",
+        "informed_city": "Rio de Janeiro",
+        "informed_state": "RJ",
         "expected_city": "São Paulo",
         "expected_state": "SP",
     }

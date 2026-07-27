@@ -32,6 +32,9 @@ from app.schemas.order import (
     OrderStatus,
     OrderStatusUpdate,
 )
+from app.services.order_data_inconsistency_refusal_service import (
+    refuse_order_for_city_data_mismatch,
+)
 from app.services.order_status_update import (
     update_order_status_with_history,
 )
@@ -54,6 +57,24 @@ def create_order(
     order: OrderCreate,
     session: DatabaseSession,
 ) -> OrderResponse:
+    existing_order = get_order_by_external_id(
+        session=session,
+        external_order_id=order.external_order_id,
+    )
+
+    if existing_order is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "DUPLICATE_EXTERNAL_ORDER_ID",
+                "message": (
+                    "Já existe uma Ordem de Serviço com este external_order_id."
+                ),
+                "external_order_id": order.external_order_id,
+                "internal_order_id": existing_order.internal_order_id,
+            },
+        )
+
     try:
         validate_order_city(
             session=session,
@@ -69,34 +90,36 @@ def create_order(
             },
         ) from error
     except CityDataMismatchError as error:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail={
-                "code": "CITY_DATA_MISMATCH",
-                "message": str(error),
-                "city_ibge_code": error.city_ibge_code,
-                "expected_city": error.expected_city,
-                "expected_state": error.expected_state,
-            },
-        ) from error
+        internal_order_id = str(uuid4())
 
-    existing_order = get_order_by_external_id(
-        session=session,
-        external_order_id=order.external_order_id,
-    )
-
-    if existing_order is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail={
-                "code": "DUPLICATE_EXTERNAL_ORDER_ID",
-                "message": (
-                    "Já existe uma Ordem de Serviço com este external_order_id."
-                ),
-                "external_order_id": order.external_order_id,
-                "internal_order_id": (existing_order.internal_order_id),
-            },
+        created_order = create_order_in_database(
+            session=session,
+            order=order,
+            internal_order_id=internal_order_id,
+            received_at=datetime.now(timezone.utc),
         )
+
+        refused_order = refuse_order_for_city_data_mismatch(
+            session=session,
+            internal_order_id=internal_order_id,
+            order=order,
+            expected_city=error.expected_city,
+            expected_state=error.expected_state,
+        )
+
+        if refused_order is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={
+                    "code": "ORDER_REFUSAL_FAILED",
+                    "message": (
+                        "A ordem foi criada, mas não foi possível registrar a recusa."
+                    ),
+                    "internal_order_id": created_order.internal_order_id,
+                },
+            ) from error
+
+        return refused_order
 
     return create_order_in_database(
         session=session,
@@ -178,7 +201,7 @@ def update_order_status(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
                 "code": "ORDER_NOT_FOUND",
-                "message": ("Ordem de Serviço não encontrada."),
+                "message": "Ordem de Serviço não encontrada.",
                 "internal_order_id": order_id,
             },
         )
@@ -205,7 +228,7 @@ def get_order_by_external_identifier(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
                 "code": "ORDER_NOT_FOUND",
-                "message": ("Ordem de Serviço não encontrada."),
+                "message": "Ordem de Serviço não encontrada.",
                 "external_order_id": external_order_id,
             },
         )
@@ -232,7 +255,7 @@ def get_order(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
                 "code": "ORDER_NOT_FOUND",
-                "message": ("Ordem de Serviço não encontrada."),
+                "message": "Ordem de Serviço não encontrada.",
                 "internal_order_id": str(internal_order_id),
             },
         )
@@ -251,25 +274,34 @@ def create_order_from_property_asset(
     session: DatabaseSession,
 ) -> OrderResponse:
     from app.repositories.cities_sqlalchemy import get_active_city_by_ibge_code
-    from app.repositories.property_assets_sqlalchemy import get_property_asset_by_id
+    from app.repositories.property_assets_sqlalchemy import (
+        get_property_asset_by_id,
+    )
     from app.schemas.property import PropertyInput, PropertyType
 
     existing_order = get_order_by_external_id(
-        session=session, external_order_id=request.external_order_id
+        session=session,
+        external_order_id=request.external_order_id,
     )
+
     if existing_order is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={
                 "code": "DUPLICATE_EXTERNAL_ORDER_ID",
-                "message": "Já existe uma Ordem de Serviço com este external_order_id.",
+                "message": (
+                    "Já existe uma Ordem de Serviço com este external_order_id."
+                ),
                 "external_order_id": request.external_order_id,
                 "internal_order_id": existing_order.internal_order_id,
             },
         )
+
     asset = get_property_asset_by_id(
-        session=session, property_asset_id=request.property_asset_id
+        session=session,
+        property_asset_id=request.property_asset_id,
     )
+
     if asset is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -279,14 +311,20 @@ def create_order_from_property_asset(
                 "property_asset_id": request.property_asset_id,
             },
         )
+
     city = get_active_city_by_ibge_code(
-        session=session, city_ibge_code=asset.city_ibge_code
+        session=session,
+        city_ibge_code=asset.city_ibge_code,
     )
+
     if city is None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail={"code": "UNSUPPORTED_CITY"},
+            detail={
+                "code": "UNSUPPORTED_CITY",
+            },
         )
+
     property_input = PropertyInput(
         property_type=PropertyType(asset.property_type),
         state=city.state,
@@ -297,22 +335,25 @@ def create_order_from_property_asset(
         street=asset.street,
         number=asset.number,
         complement=asset.complement,
-        private_area_m2=float(asset.private_area_m2)
-        if asset.private_area_m2 is not None
-        else None,
-        built_area_m2=float(asset.built_area_m2)
-        if asset.built_area_m2 is not None
-        else None,
-        land_area_m2=float(asset.land_area_m2)
-        if asset.land_area_m2 is not None
-        else None,
+        private_area_m2=(
+            float(asset.private_area_m2) if asset.private_area_m2 is not None else None
+        ),
+        built_area_m2=(
+            float(asset.built_area_m2) if asset.built_area_m2 is not None else None
+        ),
+        land_area_m2=(
+            float(asset.land_area_m2) if asset.land_area_m2 is not None else None
+        ),
         bedrooms=asset.bedrooms,
         bathrooms=asset.bathrooms,
         parking_spaces=asset.parking_spaces,
     )
+
     order = OrderCreate(
-        external_order_id=request.external_order_id, property=property_input
+        external_order_id=request.external_order_id,
+        property=property_input,
     )
+
     return create_order_in_database(
         session=session,
         order=order,
