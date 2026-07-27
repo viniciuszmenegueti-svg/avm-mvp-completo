@@ -14,6 +14,7 @@ os.environ["APP_VERSION"] = "0.2.0"
 os.environ["APP_ENV"] = "test"
 os.environ["APP_DEBUG"] = "false"
 os.environ["LOG_LEVEL"] = "INFO"
+os.environ["ALLOW_SYNTHETIC_PRICING"] = "true"
 
 os.environ["ADMIN_CREDENTIALS_JSON"] = ""
 os.environ["ADMIN_API_KEY"] = "avm-test-admin-key"

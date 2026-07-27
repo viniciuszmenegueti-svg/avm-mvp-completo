@@ -21,6 +21,11 @@ def create_order_refusal(
         reason_code=refusal.reason_code.value,
         message=refusal.message,
         details=refusal.details,
+        contract_reference=refusal.contract_reference,
+        evidence=refusal.evidence,
+        detected_at=refusal.detected_at,
+        model_version=refusal.model_version,
+        dataset_version=refusal.dataset_version,
         refused_at=refused_at,
     )
 

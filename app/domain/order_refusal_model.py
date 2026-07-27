@@ -41,11 +41,26 @@ class OrderRefusalModel(Base):
         nullable=False,
     )
 
-    details: Mapped[dict[str, str]] = mapped_column(
+    details: Mapped[dict[str, object]] = mapped_column(
         JSON,
         nullable=False,
         default=dict,
     )
+
+    contract_reference: Mapped[str] = mapped_column(
+        String(100), nullable=False, default="TR §9.5"
+    )
+
+    evidence: Mapped[dict[str, object]] = mapped_column(
+        JSON, nullable=False, default=dict
+    )
+
+    detected_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    model_version: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    dataset_version: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     refused_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

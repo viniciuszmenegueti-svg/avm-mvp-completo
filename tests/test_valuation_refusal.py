@@ -108,14 +108,18 @@ def test_refuses_order_when_base_price_is_missing() -> None:
     assert stored_order.status == OrderStatus.REFUSED
 
     assert refusal is not None
-    assert refusal.reason_code == "MISSING_BASE_PRICE"
+    assert refusal.reason_code == "TR_9_5_A"
     assert refusal.message == (
-        "Não existe preço-base configurado para a cidade e tipologia."
+        "O modelo estatístico não permite precificar o imóvel: "
+        "não há modelo/dataset aplicável à cidade e tipologia."
     )
     assert refusal.details == {
         "city_ibge_code": "3304557",
         "property_type": "HOUSE",
+        "pricing_method": "RULE_BASED_V1",
     }
+    assert refusal.contract_reference == "TR §9.5(a) e §9.6"
+    assert refusal.evidence["condition"] == "MODEL_OR_DATASET_UNAVAILABLE"
     assert refusal.refused_at is not None
 
     assert len(history) == 2

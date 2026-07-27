@@ -30,6 +30,11 @@ jobs:
       APP_ENV: test
       APP_DEBUG: "false"
       LOG_LEVEL: INFO
+
+      # Permitido exclusivamente no ambiente automatizado de testes.
+      # Em produção, deve permanecer false.
+      ALLOW_SYNTHETIC_PRICING: "true"
+
       ADMIN_CREDENTIALS_JSON: '{"ci-admin":"ci_admin_key"}'
 
     steps:

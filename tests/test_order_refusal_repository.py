@@ -57,7 +57,7 @@ def test_creates_order_refusal() -> None:
     internal_order_id = create_test_order("REFUSAL-REPOSITORY-001")
 
     refusal = OrderRefusalCreate(
-        reason_code=OrderRefusalReason.MISSING_BASE_PRICE,
+        reason_code=OrderRefusalReason.MODEL_NOT_APPLICABLE,
         message=("Não existe preço-base configurado para a cidade e tipologia."),
         details={
             "city_ibge_code": "3550308",
@@ -76,7 +76,7 @@ def test_creates_order_refusal() -> None:
 
     assert database_refusal.refusal_id
     assert database_refusal.internal_order_id == internal_order_id
-    assert database_refusal.reason_code == "MISSING_BASE_PRICE"
+    assert database_refusal.reason_code == "TR_9_5_A"
     assert database_refusal.details["city_ibge_code"] == "3550308"
     assert database_refusal.refused_at is not None
 
@@ -85,7 +85,7 @@ def test_gets_order_refusal_by_internal_order_id() -> None:
     internal_order_id = create_test_order("REFUSAL-REPOSITORY-002")
 
     refusal = OrderRefusalCreate(
-        reason_code=OrderRefusalReason.LOW_CONFIDENCE,
+        reason_code=OrderRefusalReason.LOCATION_NOT_CONFIRMED,
         message="A confiança da avaliação ficou abaixo do limite.",
     )
 
@@ -105,7 +105,7 @@ def test_gets_order_refusal_by_internal_order_id() -> None:
 
     assert stored_refusal is not None
     assert stored_refusal.refusal_id == created_refusal.refusal_id
-    assert stored_refusal.reason_code == "LOW_CONFIDENCE"
+    assert stored_refusal.reason_code == "TR_9_5_D"
     assert stored_refusal.details == {}
 
 
