@@ -32,6 +32,9 @@ from app.schemas.order import (
     OrderStatus,
     OrderStatusUpdate,
 )
+from app.services.order_conflict_of_interest_refusal_service import (
+    refuse_order_for_conflict_of_interest,
+)
 from app.services.order_data_inconsistency_refusal_service import (
     refuse_order_for_city_data_mismatch,
 )
@@ -74,6 +77,36 @@ def create_order(
                 "internal_order_id": existing_order.internal_order_id,
             },
         )
+
+    if order.conflict_of_interest.has_conflict:
+        internal_order_id = str(uuid4())
+
+        created_order = create_order_in_database(
+            session=session,
+            order=order,
+            internal_order_id=internal_order_id,
+            received_at=datetime.now(timezone.utc),
+        )
+
+        refused_order = refuse_order_for_conflict_of_interest(
+            session=session,
+            internal_order_id=internal_order_id,
+            order=order,
+        )
+
+        if refused_order is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={
+                    "code": "ORDER_REFUSAL_FAILED",
+                    "message": (
+                        "A ordem foi criada, mas não foi possível registrar a recusa."
+                    ),
+                    "internal_order_id": created_order.internal_order_id,
+                },
+            )
+
+        return refused_order
 
     try:
         validate_order_city(

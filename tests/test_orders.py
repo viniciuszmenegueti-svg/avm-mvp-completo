@@ -8,6 +8,7 @@ from app.repositories.orders_memory import (
     orders_storage,
 )
 
+
 client = TestClient(app)
 
 
@@ -68,11 +69,13 @@ def test_get_order() -> None:
     get_response = client.get(f"/orders/{internal_order_id}")
 
     assert get_response.status_code == 200
-    assert get_response.json()["internal_order_id"] == (internal_order_id)
+    assert get_response.json()["internal_order_id"] == internal_order_id
 
 
 def test_get_order_not_found() -> None:
-    response = client.get("/orders/00000000-0000-0000-0000-000000000000")
+    response = client.get(
+        "/orders/00000000-0000-0000-0000-000000000000",
+    )
 
     assert response.status_code == 404
 
@@ -101,8 +104,8 @@ def test_duplicate_external_order_id() -> None:
 
     detail = second_response.json()["detail"]
 
-    assert detail["external_order_id"] == ("CX-2026-000001")
-    assert detail["internal_order_id"] == (first_internal_id)
+    assert detail["external_order_id"] == "CX-2026-000001"
+    assert detail["internal_order_id"] == first_internal_id
 
 
 def test_different_external_ids_are_allowed() -> None:
@@ -191,6 +194,48 @@ def test_refuses_order_when_city_does_not_match_ibge_code() -> None:
     }
 
 
+def test_refuses_order_when_conflict_of_interest_is_declared() -> None:
+    payload = apartment_payload("CONFLICT-OF-INTEREST-001")
+
+    payload["conflict_of_interest"] = {
+        "has_conflict": True,
+        "conflict_type": "RELATED_PARTY",
+        "description": ("Solicitante possui vínculo com o responsável pela avaliação."),
+        "identified_by": "COMPLIANCE",
+    }
+
+    response = client.post(
+        "/orders",
+        json=payload,
+    )
+
+    assert response.status_code == 201
+
+    response_body = response.json()
+
+    assert response_body["external_order_id"] == "CONFLICT-OF-INTEREST-001"
+    assert response_body["status"] == "REFUSED"
+
+    internal_order_id = response_body["internal_order_id"]
+
+    refusal_response = client.get(
+        f"/orders/{internal_order_id}/refusal",
+    )
+
+    assert refusal_response.status_code == 200
+
+    refusal = refusal_response.json()
+
+    assert refusal["reason_code"] == "TR_9_5_C"
+    assert refusal["contract_reference"] == "TR §9.5(c) e §9.6"
+    assert refusal["evidence"] == {
+        "condition": "CONFLICT_OF_INTEREST_DECLARED",
+        "conflict_type": "RELATED_PARTY",
+        "description": ("Solicitante possui vínculo com o responsável pela avaliação."),
+        "identified_by": "COMPLIANCE",
+    }
+
+
 def test_list_orders_when_database_is_empty() -> None:
     response = client.get("/orders")
 
@@ -237,7 +282,9 @@ def test_list_orders_with_pagination() -> None:
     for order_number in range(1, 4):
         response = client.post(
             "/orders",
-            json=apartment_payload(f"PAGINATION-{order_number:03d}"),
+            json=apartment_payload(
+                f"PAGINATION-{order_number:03d}",
+            ),
         )
 
         assert response.status_code == 201
@@ -337,12 +384,12 @@ def test_updates_order_status() -> None:
     )
 
     assert update_response.status_code == 200
-    assert update_response.json()["status"] == ("VALIDATING_INPUT")
+    assert update_response.json()["status"] == "VALIDATING_INPUT"
 
     get_response = client.get(f"/orders/{internal_order_id}")
 
     assert get_response.status_code == 200
-    assert get_response.json()["status"] == ("VALIDATING_INPUT")
+    assert get_response.json()["status"] == "VALIDATING_INPUT"
 
 
 def test_rejects_invalid_order_status_transition() -> None:
@@ -382,7 +429,7 @@ def test_update_status_returns_not_found() -> None:
 
     assert response.status_code == 404
 
-    assert response.json()["detail"]["code"] == ("ORDER_NOT_FOUND")
+    assert response.json()["detail"]["code"] == "ORDER_NOT_FOUND"
 
 
 def test_status_update_creates_history() -> None:
@@ -449,7 +496,9 @@ def test_get_order_status_history() -> None:
 
     assert second_update.status_code == 200
 
-    response = client.get(f"/orders/{internal_order_id}/status-history")
+    response = client.get(
+        f"/orders/{internal_order_id}/status-history",
+    )
 
     assert response.status_code == 200
 
@@ -460,10 +509,10 @@ def test_get_order_status_history() -> None:
     assert history[0]["previous_status"] == "RECEIVED"
     assert history[0]["new_status"] == "VALIDATING_INPUT"
 
-    assert history[1]["previous_status"] == ("VALIDATING_INPUT")
+    assert history[1]["previous_status"] == "VALIDATING_INPUT"
     assert history[1]["new_status"] == "COMPLETED"
 
-    assert history[0]["internal_order_id"] == (internal_order_id)
+    assert history[0]["internal_order_id"] == internal_order_id
     assert history[0]["changed_at"]
 
 
@@ -475,7 +524,9 @@ def test_get_empty_order_status_history() -> None:
 
     internal_order_id = create_response.json()["internal_order_id"]
 
-    response = client.get(f"/orders/{internal_order_id}/status-history")
+    response = client.get(
+        f"/orders/{internal_order_id}/status-history",
+    )
 
     assert response.status_code == 200
     assert response.json() == []
@@ -484,15 +535,19 @@ def test_get_empty_order_status_history() -> None:
 def test_get_status_history_returns_not_found() -> None:
     internal_order_id = "00000000-0000-0000-0000-000000000000"
 
-    response = client.get(f"/orders/{internal_order_id}/status-history")
+    response = client.get(
+        f"/orders/{internal_order_id}/status-history",
+    )
 
     assert response.status_code == 404
 
-    assert response.json()["detail"]["code"] == ("ORDER_NOT_FOUND")
+    assert response.json()["detail"]["code"] == "ORDER_NOT_FOUND"
 
 
 def test_get_status_history_rejects_invalid_order_id() -> None:
-    response = client.get("/orders/identificador-invalido/status-history")
+    response = client.get(
+        "/orders/identificador-invalido/status-history",
+    )
 
     assert response.status_code == 422
 
@@ -500,7 +555,9 @@ def test_get_status_history_rejects_invalid_order_id() -> None:
 def test_status_update_rolls_back_when_history_fails(
     monkeypatch,
 ) -> None:
-    from app.services import order_status_update as status_update_service
+    from app.services import (
+        order_status_update as status_update_service,
+    )
 
     create_response = client.post(
         "/orders",
@@ -512,7 +569,9 @@ def test_status_update_rolls_back_when_history_fails(
     internal_order_id = create_response.json()["internal_order_id"]
 
     def fail_history_creation(*args, **kwargs):
-        raise RuntimeError("Falha simulada ao gravar histórico")
+        raise RuntimeError(
+            "Falha simulada ao gravar histórico",
+        )
 
     monkeypatch.setattr(
         status_update_service,
@@ -544,19 +603,23 @@ def test_get_order_by_external_id() -> None:
 
     assert create_response.status_code == 201
 
-    response = client.get(f"/orders/external/{external_order_id}")
+    response = client.get(
+        f"/orders/external/{external_order_id}",
+    )
 
     assert response.status_code == 200
 
     body = response.json()
 
     assert body["external_order_id"] == external_order_id
-    assert body["internal_order_id"] == (create_response.json()["internal_order_id"])
+    assert body["internal_order_id"] == create_response.json()["internal_order_id"]
     assert body["status"] == "RECEIVED"
 
 
 def test_get_order_by_external_id_returns_not_found() -> None:
-    response = client.get("/orders/external/EXTERNAL-NOT-FOUND")
+    response = client.get(
+        "/orders/external/EXTERNAL-NOT-FOUND",
+    )
 
     assert response.status_code == 404
 
