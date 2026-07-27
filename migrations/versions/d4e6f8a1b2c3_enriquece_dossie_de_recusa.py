@@ -6,13 +6,13 @@ Revises: c8d7e6f5a4b3
 
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision: str = "d4e6f8a1b2c3"
 down_revision: str | Sequence[str] | None = "c8d7e6f5a4b3"
-branch_labels = None
-depends_on = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -25,28 +25,43 @@ def upgrade() -> None:
             server_default="TR §9.5",
         ),
     )
+
     op.add_column(
         "order_refusals",
         sa.Column(
-            "evidence", sa.JSON(), nullable=False, server_default=sa.text("'{}'")
+            "evidence",
+            sa.JSON(),
+            nullable=False,
+            server_default=sa.text("'{}'"),
         ),
     )
+
     op.add_column(
         "order_refusals",
         sa.Column(
             "detected_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("CURRENT_TIMESTAMP"),
+            server_default=sa.func.now(),
         ),
     )
+
     op.add_column(
         "order_refusals",
-        sa.Column("model_version", sa.String(length=50), nullable=True),
+        sa.Column(
+            "model_version",
+            sa.String(length=50),
+            nullable=True,
+        ),
     )
+
     op.add_column(
         "order_refusals",
-        sa.Column("dataset_version", sa.String(length=100), nullable=True),
+        sa.Column(
+            "dataset_version",
+            sa.String(length=100),
+            nullable=True,
+        ),
     )
 
 
