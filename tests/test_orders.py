@@ -465,6 +465,44 @@ def test_rejects_invalid_order_status_transition() -> None:
     }
 
 
+def test_rejects_refused_status_through_generic_endpoint() -> None:
+    create_response = client.post(
+        "/orders",
+        json=apartment_payload("STATUS-ENDPOINT-REFUSED-001"),
+    )
+
+    assert create_response.status_code == 201
+
+    internal_order_id = create_response.json()["internal_order_id"]
+
+    validating_response = client.patch(
+        f"/orders/{internal_order_id}/status",
+        json={
+            "status": "VALIDATING_INPUT",
+        },
+    )
+
+    assert validating_response.status_code == 200
+
+    refused_response = client.patch(
+        f"/orders/{internal_order_id}/status",
+        json={
+            "status": "REFUSED",
+        },
+    )
+
+    assert refused_response.status_code == 409
+
+    assert refused_response.json()["detail"] == {
+        "code": "REFUSAL_REQUIRES_DOSSIER",
+        "message": (
+            "O status REFUSED não pode ser aplicado pelo endpoint genérico. "
+            "A recusa deve ser registrada por um serviço contratual com dossiê."
+        ),
+        "new_status": "REFUSED",
+    }
+
+
 def test_update_status_returns_not_found() -> None:
     internal_order_id = "00000000-0000-0000-0000-000000000000"
 

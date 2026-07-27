@@ -245,6 +245,19 @@ def update_order_status(
 ) -> OrderResponse:
     order_id = str(internal_order_id)
 
+    if status_update.status == OrderStatus.REFUSED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "REFUSAL_REQUIRES_DOSSIER",
+                "message": (
+                    "O status REFUSED não pode ser aplicado pelo endpoint genérico. "
+                    "A recusa deve ser registrada por um serviço contratual com dossiê."
+                ),
+                "new_status": OrderStatus.REFUSED.value,
+            },
+        )
+
     try:
         updated_order = update_order_status_with_history(
             session=session,
