@@ -714,3 +714,202 @@ def test_get_order_by_external_id_returns_not_found() -> None:
         "message": "Ordem de Serviço não encontrada.",
         "external_order_id": "EXTERNAL-NOT-FOUND",
     }
+
+
+def test_rolls_back_entire_conflict_refusal_when_service_fails(
+    monkeypatch,
+) -> None:
+    from uuid import UUID
+
+    from app.api.routes import orders as order_routes
+    from app.infrastructure.database import SessionLocal
+    from app.repositories.order_refusals_sqlalchemy import (
+        get_order_refusal_by_internal_order_id,
+    )
+    from app.repositories.order_status_history_sqlalchemy import (
+        list_order_status_history,
+    )
+    from app.repositories.orders_sqlalchemy import get_order_by_internal_id
+
+    internal_order_id = "00000000-0000-0000-0000-000000000101"
+    payload = apartment_payload("ATOMIC-CONFLICT-ROLLBACK-001")
+    payload["conflict_of_interest"] = {
+        "has_conflict": True,
+        "conflict_type": "RELATED_PARTY",
+        "description": "Falha simulada durante o registro da recusa.",
+        "identified_by": "COMPLIANCE",
+    }
+
+    monkeypatch.setattr(
+        order_routes,
+        "uuid4",
+        lambda: UUID(internal_order_id),
+    )
+
+    def fail_refusal(*args, **kwargs):
+        raise RuntimeError("falha simulada na recusa por conflito")
+
+    monkeypatch.setattr(
+        order_routes,
+        "refuse_order_for_conflict_of_interest",
+        fail_refusal,
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="falha simulada na recusa por conflito",
+    ):
+        client.post(
+            "/orders",
+            json=payload,
+        )
+
+    with SessionLocal() as session:
+        stored_order = get_order_by_internal_id(
+            session=session,
+            internal_order_id=internal_order_id,
+        )
+        stored_refusal = get_order_refusal_by_internal_order_id(
+            session=session,
+            internal_order_id=internal_order_id,
+        )
+        history = list_order_status_history(
+            session=session,
+            internal_order_id=internal_order_id,
+        )
+
+    assert stored_order is None
+    assert stored_refusal is None
+    assert history == []
+
+
+def test_rolls_back_entire_location_refusal_when_service_fails(
+    monkeypatch,
+) -> None:
+    from uuid import UUID
+
+    from app.api.routes import orders as order_routes
+    from app.infrastructure.database import SessionLocal
+    from app.repositories.order_refusals_sqlalchemy import (
+        get_order_refusal_by_internal_order_id,
+    )
+    from app.repositories.order_status_history_sqlalchemy import (
+        list_order_status_history,
+    )
+    from app.repositories.orders_sqlalchemy import get_order_by_internal_id
+
+    internal_order_id = "00000000-0000-0000-0000-000000000102"
+    payload = apartment_payload("ATOMIC-LOCATION-ROLLBACK-001")
+    payload["location_confirmation"] = {
+        "is_confirmed": False,
+        "confirmation_method": "DOCUMENT_VALIDATION",
+        "evidence_reference": "MATRICULA-NAO-LOCALIZADA",
+        "failure_reason": "Falha simulada durante o registro da recusa.",
+        "verified_by": "VALIDATION_PIPELINE",
+    }
+
+    monkeypatch.setattr(
+        order_routes,
+        "uuid4",
+        lambda: UUID(internal_order_id),
+    )
+
+    def fail_refusal(*args, **kwargs):
+        raise RuntimeError("falha simulada na recusa por localização")
+
+    monkeypatch.setattr(
+        order_routes,
+        "refuse_order_for_unconfirmed_location",
+        fail_refusal,
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="falha simulada na recusa por localização",
+    ):
+        client.post(
+            "/orders",
+            json=payload,
+        )
+
+    with SessionLocal() as session:
+        stored_order = get_order_by_internal_id(
+            session=session,
+            internal_order_id=internal_order_id,
+        )
+        stored_refusal = get_order_refusal_by_internal_order_id(
+            session=session,
+            internal_order_id=internal_order_id,
+        )
+        history = list_order_status_history(
+            session=session,
+            internal_order_id=internal_order_id,
+        )
+
+    assert stored_order is None
+    assert stored_refusal is None
+    assert history == []
+
+
+def test_rolls_back_entire_city_mismatch_refusal_when_service_fails(
+    monkeypatch,
+) -> None:
+    from uuid import UUID
+
+    from app.api.routes import orders as order_routes
+    from app.infrastructure.database import SessionLocal
+    from app.repositories.order_refusals_sqlalchemy import (
+        get_order_refusal_by_internal_order_id,
+    )
+    from app.repositories.order_status_history_sqlalchemy import (
+        list_order_status_history,
+    )
+    from app.repositories.orders_sqlalchemy import get_order_by_internal_id
+
+    internal_order_id = "00000000-0000-0000-0000-000000000103"
+    payload = apartment_payload("ATOMIC-CITY-ROLLBACK-001")
+    payload["property"]["state"] = "RJ"
+    payload["property"]["city"] = "Rio de Janeiro"
+    payload["property"]["city_ibge_code"] = "3550308"
+
+    monkeypatch.setattr(
+        order_routes,
+        "uuid4",
+        lambda: UUID(internal_order_id),
+    )
+
+    def fail_refusal(*args, **kwargs):
+        raise RuntimeError("falha simulada na recusa por inconsistência")
+
+    monkeypatch.setattr(
+        order_routes,
+        "refuse_order_for_city_data_mismatch",
+        fail_refusal,
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="falha simulada na recusa por inconsistência",
+    ):
+        client.post(
+            "/orders",
+            json=payload,
+        )
+
+    with SessionLocal() as session:
+        stored_order = get_order_by_internal_id(
+            session=session,
+            internal_order_id=internal_order_id,
+        )
+        stored_refusal = get_order_refusal_by_internal_order_id(
+            session=session,
+            internal_order_id=internal_order_id,
+        )
+        history = list_order_status_history(
+            session=session,
+            internal_order_id=internal_order_id,
+        )
+
+    assert stored_order is None
+    assert stored_refusal is None
+    assert history == []

@@ -23,6 +23,7 @@ def update_order_status_with_history(
     session: Session,
     internal_order_id: str,
     new_status: OrderStatus,
+    commit: bool = True,
 ) -> OrderResponse | None:
     existing_order = get_order_by_internal_id(
         session=session,
@@ -46,7 +47,8 @@ def update_order_status_with_history(
         )
 
         if updated_order is None:
-            session.rollback()
+            if commit:
+                session.rollback()
             return None
 
         create_order_status_history(
@@ -57,13 +59,18 @@ def update_order_status_with_history(
             commit=False,
         )
 
-        session.commit()
+        if commit:
+            session.commit()
+        else:
+            session.flush()
 
         return updated_order
 
     except InvalidOrderStatusTransitionError:
-        session.rollback()
+        if commit:
+            session.rollback()
         raise
     except Exception:
-        session.rollback()
+        if commit:
+            session.rollback()
         raise

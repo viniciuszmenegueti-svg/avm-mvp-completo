@@ -26,6 +26,7 @@ def refuse_order_with_evidence(
     session: Session,
     internal_order_id: str,
     refusal: OrderRefusalCreate,
+    commit: bool = True,
 ) -> OrderRefusalResponse | None:
     order = get_order_by_internal_id(
         session=session,
@@ -68,7 +69,8 @@ def refuse_order_with_evidence(
         )
 
         if updated_order is None:
-            session.rollback()
+            if commit:
+                session.rollback()
             return None
 
         create_order_status_history(
@@ -79,11 +81,15 @@ def refuse_order_with_evidence(
             commit=False,
         )
 
-        session.commit()
-        session.refresh(created_refusal)
+        if commit:
+            session.commit()
+            session.refresh(created_refusal)
+        else:
+            session.flush()
 
         return OrderRefusalResponse.model_validate(created_refusal)
 
     except Exception:
-        session.rollback()
+        if commit:
+            session.rollback()
         raise

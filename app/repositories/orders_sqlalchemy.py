@@ -24,6 +24,7 @@ def create_order(
     internal_order_id: str,
     received_at: datetime,
     property_asset_id: str | None = None,
+    commit: bool = True,
 ) -> OrderResponse:
     database_order = OrderModel(
         internal_order_id=internal_order_id,
@@ -54,8 +55,12 @@ def create_order(
     )
 
     session.add(database_order)
-    session.commit()
-    session.refresh(database_order)
+
+    if commit:
+        session.commit()
+        session.refresh(database_order)
+    else:
+        session.flush()
 
     return order_model_to_response(database_order)
 

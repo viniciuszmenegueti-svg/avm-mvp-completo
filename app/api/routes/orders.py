@@ -84,62 +84,86 @@ def create_order(
     if order.conflict_of_interest.has_conflict:
         internal_order_id = str(uuid4())
 
-        created_order = create_order_in_database(
-            session=session,
-            order=order,
-            internal_order_id=internal_order_id,
-            received_at=datetime.now(timezone.utc),
-        )
-
-        refused_order = refuse_order_for_conflict_of_interest(
-            session=session,
-            internal_order_id=internal_order_id,
-            order=order,
-        )
-
-        if refused_order is None:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={
-                    "code": "ORDER_REFUSAL_FAILED",
-                    "message": (
-                        "A ordem foi criada, mas não foi possível registrar a recusa."
-                    ),
-                    "internal_order_id": created_order.internal_order_id,
-                },
+        try:
+            create_order_in_database(
+                session=session,
+                order=order,
+                internal_order_id=internal_order_id,
+                received_at=datetime.now(timezone.utc),
+                commit=False,
             )
 
-        return refused_order
+            refused_order = refuse_order_for_conflict_of_interest(
+                session=session,
+                internal_order_id=internal_order_id,
+                order=order,
+                commit=False,
+            )
+
+            if refused_order is None:
+                session.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail={
+                        "code": "ORDER_REFUSAL_FAILED",
+                        "message": (
+                            "Não foi possível criar a ordem recusada e registrar "
+                            "o dossiê contratual."
+                        ),
+                        "internal_order_id": internal_order_id,
+                    },
+                )
+
+            session.commit()
+            return refused_order
+
+        except HTTPException:
+            raise
+        except Exception:
+            session.rollback()
+            raise
 
     if not order.location_confirmation.is_confirmed:
         internal_order_id = str(uuid4())
 
-        created_order = create_order_in_database(
-            session=session,
-            order=order,
-            internal_order_id=internal_order_id,
-            received_at=datetime.now(timezone.utc),
-        )
-
-        refused_order = refuse_order_for_unconfirmed_location(
-            session=session,
-            internal_order_id=internal_order_id,
-            order=order,
-        )
-
-        if refused_order is None:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={
-                    "code": "ORDER_REFUSAL_FAILED",
-                    "message": (
-                        "A ordem foi criada, mas não foi possível registrar a recusa."
-                    ),
-                    "internal_order_id": created_order.internal_order_id,
-                },
+        try:
+            create_order_in_database(
+                session=session,
+                order=order,
+                internal_order_id=internal_order_id,
+                received_at=datetime.now(timezone.utc),
+                commit=False,
             )
 
-        return refused_order
+            refused_order = refuse_order_for_unconfirmed_location(
+                session=session,
+                internal_order_id=internal_order_id,
+                order=order,
+                commit=False,
+            )
+
+            if refused_order is None:
+                session.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail={
+                        "code": "ORDER_REFUSAL_FAILED",
+                        "message": (
+                            "Não foi possível criar a ordem recusada e registrar "
+                            "o dossiê contratual."
+                        ),
+                        "internal_order_id": internal_order_id,
+                    },
+                )
+
+            session.commit()
+            return refused_order
+
+        except HTTPException:
+            raise
+        except Exception:
+            session.rollback()
+            raise
 
     try:
         validate_order_city(
@@ -158,34 +182,46 @@ def create_order(
     except CityDataMismatchError as error:
         internal_order_id = str(uuid4())
 
-        created_order = create_order_in_database(
-            session=session,
-            order=order,
-            internal_order_id=internal_order_id,
-            received_at=datetime.now(timezone.utc),
-        )
+        try:
+            create_order_in_database(
+                session=session,
+                order=order,
+                internal_order_id=internal_order_id,
+                received_at=datetime.now(timezone.utc),
+                commit=False,
+            )
 
-        refused_order = refuse_order_for_city_data_mismatch(
-            session=session,
-            internal_order_id=internal_order_id,
-            order=order,
-            expected_city=error.expected_city,
-            expected_state=error.expected_state,
-        )
+            refused_order = refuse_order_for_city_data_mismatch(
+                session=session,
+                internal_order_id=internal_order_id,
+                order=order,
+                expected_city=error.expected_city,
+                expected_state=error.expected_state,
+                commit=False,
+            )
 
-        if refused_order is None:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={
-                    "code": "ORDER_REFUSAL_FAILED",
-                    "message": (
-                        "A ordem foi criada, mas não foi possível registrar a recusa."
-                    ),
-                    "internal_order_id": created_order.internal_order_id,
-                },
-            ) from error
+            if refused_order is None:
+                session.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail={
+                        "code": "ORDER_REFUSAL_FAILED",
+                        "message": (
+                            "Não foi possível criar a ordem recusada e registrar "
+                            "o dossiê contratual."
+                        ),
+                        "internal_order_id": internal_order_id,
+                    },
+                ) from error
 
-        return refused_order
+            session.commit()
+            return refused_order
+
+        except HTTPException:
+            raise
+        except Exception:
+            session.rollback()
+            raise
 
     return create_order_in_database(
         session=session,
