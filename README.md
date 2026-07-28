@@ -609,6 +609,28 @@ O projeto inclui:
 - Logs HTTP estruturados
 - Tratamento centralizado de erros
 
+## Fluxo de branches
+
+O repositório utiliza o seguinte fluxo:
+
+```text
+main      → versões estáveis e publicadas
+develop   → integração e desenvolvimento
+feature/* → novas funcionalidades
+fix/*     → correções
+release/* → preparação de versões
+docs/*    → alterações de documentação
+```
+
+Regras principais:
+
+- As alterações devem ser desenvolvidas em uma branch temporária criada a partir de `develop`.
+- Toda integração com `develop` deve ocorrer por Pull Request.
+- A branch `main` recebe somente versões estáveis, validadas e prontas para publicação.
+- As branches `main` e `develop` são protegidas contra exclusão e force push.
+- Os checks automatizados devem passar antes do merge.
+- Depois do merge, a branch temporária deve ser excluída.
+
 ## Licença
 
 Projeto em desenvolvimento para fins de estudo, demonstração técnica e evolução de um modelo automatizado de avaliação imobiliária.
