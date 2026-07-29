@@ -2,10 +2,12 @@ from uuid import UUID
 
 from fastapi import (
     APIRouter,
+    Depends,
     HTTPException,
     status,
 )
 
+from app.core.client_auth import require_client_api_key
 from app.infrastructure.dependencies import (
     DatabaseSession,
 )
@@ -22,6 +24,7 @@ from app.schemas.order_status_history import (
 
 router = APIRouter(
     prefix="/orders",
+    dependencies=[Depends(require_client_api_key)],
     tags=["Histórico de Status"],
 )
 

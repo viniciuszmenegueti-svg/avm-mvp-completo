@@ -1,7 +1,8 @@
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from app.core.client_auth import require_client_api_key
 from app.infrastructure.dependencies import DatabaseSession
 from app.repositories.cities_sqlalchemy import get_active_city_by_ibge_code
 from app.repositories.property_assets_sqlalchemy import (
@@ -21,7 +22,11 @@ from app.schemas.property_asset import (
 )
 
 
-router = APIRouter(prefix="/property-assets", tags=["Imóveis"])
+router = APIRouter(
+    prefix="/property-assets",
+    tags=["Imóveis"],
+    dependencies=[Depends(require_client_api_key)],
+)
 
 
 @router.post(

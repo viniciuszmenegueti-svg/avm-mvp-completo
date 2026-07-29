@@ -2,10 +2,13 @@ from uuid import UUID
 
 from fastapi import (
     APIRouter,
+    Depends,
     HTTPException,
+    Response,
     status,
 )
 
+from app.core.client_auth import require_client_api_key
 from app.domain.exceptions import (
     InvalidOrderStatusTransitionError,
 )
@@ -21,12 +24,14 @@ from app.schemas.valuation import ValuationResponse
 from app.services.valuation_service import (
     calculate_and_store_valuation,
 )
+from app.services.report_service import build_valuation_csv, build_valuation_pdf
 from engine.exceptions import ValuationCalculationError
 from engine.registry import ModelVersionNotActiveError
 
 
 router = APIRouter(
     prefix="/orders",
+    dependencies=[Depends(require_client_api_key)],
     tags=["Avaliações AVM"],
 )
 
@@ -145,3 +150,67 @@ def get_order_valuation(
         )
 
     return valuation
+
+
+def _get_order_and_valuation(
+    session: DatabaseSession,
+    internal_order_id: UUID,
+) -> tuple:
+    order_id = str(internal_order_id)
+    order = get_order_by_internal_id(session=session, internal_order_id=order_id)
+    valuation = get_valuation_by_internal_order_id(
+        session=session,
+        internal_order_id=order_id,
+    )
+    if order is None or valuation is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "VALUATION_NOT_FOUND",
+                "message": "Avaliação AVM não encontrada.",
+                "internal_order_id": order_id,
+            },
+        )
+    return order, valuation
+
+
+@router.get(
+    "/{internal_order_id}/valuation/report.csv",
+    summary="Exporta a precificação em CSV",
+)
+def export_order_valuation_csv(
+    internal_order_id: UUID,
+    session: DatabaseSession,
+) -> Response:
+    order, valuation = _get_order_and_valuation(session, internal_order_id)
+    content = build_valuation_csv(order, valuation)
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="valuation-{internal_order_id}.csv"'
+            )
+        },
+    )
+
+
+@router.get(
+    "/{internal_order_id}/valuation/report.pdf",
+    summary="Exporta o relatório de precificação em PDF",
+)
+def export_order_valuation_pdf(
+    internal_order_id: UUID,
+    session: DatabaseSession,
+) -> Response:
+    order, valuation = _get_order_and_valuation(session, internal_order_id)
+    content = build_valuation_pdf(order, valuation)
+    return Response(
+        content=content,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="valuation-{internal_order_id}.pdf"'
+            )
+        },
+    )

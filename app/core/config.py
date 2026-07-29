@@ -51,6 +51,11 @@ ADMIN_ACTOR = os.getenv(
     "",
 ).strip()
 
+CLIENT_CREDENTIALS_JSON = os.getenv(
+    "CLIENT_CREDENTIALS_JSON",
+    "",
+).strip()
+
 
 def _env_flag(name: str, default: str = "false") -> bool:
     return os.getenv(name, default).lower() in {"1", "true", "yes", "on"}
