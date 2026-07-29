@@ -38,6 +38,7 @@ services:
       ADMIN_CREDENTIALS_JSON: ${ADMIN_CREDENTIALS_JSON:-}
       ADMIN_API_KEY: ${ADMIN_API_KEY:-}
       ADMIN_ACTOR: ${ADMIN_ACTOR:-}
+      CLIENT_CREDENTIALS_JSON: ${CLIENT_CREDENTIALS_JSON:-}
     ports:
       - "8000:8000"
     depends_on:

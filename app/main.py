@@ -20,6 +20,7 @@ from app.api.routes.orders import router as orders_router
 from app.api.routes.property_assets import (
     router as property_assets_router,
 )
+from app.api.routes.statistical_models import router as statistical_models_router
 from app.api.routes.valuations import router as valuations_router
 from app.core.config import (
     APP_DEBUG,
@@ -87,3 +88,4 @@ app.include_router(order_refusals_router)
 app.include_router(order_status_history_router)
 app.include_router(cities_router)
 app.include_router(model_versions_router)
+app.include_router(statistical_models_router)

@@ -31,6 +31,7 @@ htmlcov/
 data/database/
 
 # Dados locais e confidenciais
+.audit/
 data/raw/
 data/processed/
 data/uploads/

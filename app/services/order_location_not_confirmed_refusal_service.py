@@ -14,7 +14,7 @@ def refuse_order_for_unconfirmed_location(
 ) -> OrderResponse | None:
     declaration = order.location_confirmation
 
-    if declaration.is_confirmed:
+    if declaration.meets_contract_accuracy:
         return None
 
     try:
@@ -43,10 +43,23 @@ def refuse_order_for_unconfirmed_location(
                 "evidence_reference": declaration.evidence_reference,
                 "failure_reason": declaration.failure_reason,
                 "verified_by": declaration.verified_by,
+                **(
+                    {
+                        "latitude": declaration.latitude,
+                        "longitude": declaration.longitude,
+                        "accuracy_meters": declaration.accuracy_meters,
+                        "maximum_accuracy_meters": (
+                            declaration.MAXIMUM_CONTRACT_ACCURACY_METERS
+                        ),
+                    }
+                    if declaration.accuracy_meters is not None
+                    else {}
+                ),
             },
             details={
                 "declaration_source": "order.location_confirmation",
                 "is_confirmed": declaration.is_confirmed,
+                "meets_contract_accuracy": declaration.meets_contract_accuracy,
             },
             model_version=None,
             dataset_version=None,

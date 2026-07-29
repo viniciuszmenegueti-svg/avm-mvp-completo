@@ -3,11 +3,13 @@ from uuid import UUID, uuid4
 
 from fastapi import (
     APIRouter,
+    Depends,
     HTTPException,
     Query,
     status,
 )
 
+from app.core.client_auth import require_client_api_key
 from app.domain.exceptions import (
     CityDataMismatchError,
     InvalidOrderStatusTransitionError,
@@ -49,6 +51,7 @@ from app.services.order_validation import validate_order_city
 
 router = APIRouter(
     prefix="/orders",
+    dependencies=[Depends(require_client_api_key)],
     tags=["Ordens de Serviço"],
 )
 
@@ -123,7 +126,7 @@ def create_order(
             session.rollback()
             raise
 
-    if not order.location_confirmation.is_confirmed:
+    if not order.location_confirmation.meets_contract_accuracy:
         internal_order_id = str(uuid4())
 
         try:

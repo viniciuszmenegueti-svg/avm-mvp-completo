@@ -2,10 +2,12 @@ from uuid import UUID
 
 from fastapi import (
     APIRouter,
+    Depends,
     HTTPException,
     status,
 )
 
+from app.core.client_auth import require_client_api_key
 from app.infrastructure.dependencies import DatabaseSession
 from app.repositories.order_refusals_sqlalchemy import (
     get_order_refusal_by_internal_order_id,
@@ -18,6 +20,7 @@ from app.schemas.order_refusal import OrderRefusalResponse
 
 router = APIRouter(
     prefix="/orders",
+    dependencies=[Depends(require_client_api_key)],
     tags=["Recusas de Ordens"],
 )
 

@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import StrEnum
-from typing import Self
+from typing import ClassVar, Self
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -72,6 +72,8 @@ class ConflictOfInterestDeclaration(BaseModel):
 
 
 class LocationConfirmationDeclaration(BaseModel):
+    MAXIMUM_CONTRACT_ACCURACY_METERS: ClassVar[float] = 50.0
+
     is_confirmed: bool = Field(
         default=True,
         description=(
@@ -106,9 +108,23 @@ class LocationConfirmationDeclaration(BaseModel):
         description="Origem ou responsável pela verificação da localização.",
         examples=["VALIDATION_PIPELINE"],
     )
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    accuracy_meters: float | None = Field(
+        default=None,
+        ge=0,
+        description="Imprecisão declarada da coordenada em metros.",
+    )
 
     @model_validator(mode="after")
     def validate_location_confirmation(self) -> Self:
+        has_latitude = self.latitude is not None
+        has_longitude = self.longitude is not None
+        if has_latitude != has_longitude:
+            raise ValueError("latitude e longitude devem ser informadas em conjunto.")
+        if self.accuracy_meters is not None and not (has_latitude and has_longitude):
+            raise ValueError("accuracy_meters exige latitude e longitude declaradas.")
+
         if self.is_confirmed:
             if self.failure_reason is not None:
                 raise ValueError(
@@ -127,6 +143,13 @@ class LocationConfirmationDeclaration(BaseModel):
             raise ValueError("verified_by é obrigatório quando is_confirmed for falso.")
 
         return self
+
+    @property
+    def meets_contract_accuracy(self) -> bool:
+        return self.is_confirmed and (
+            self.accuracy_meters is None
+            or self.accuracy_meters <= self.MAXIMUM_CONTRACT_ACCURACY_METERS
+        )
 
 
 class OrderCreate(BaseModel):
