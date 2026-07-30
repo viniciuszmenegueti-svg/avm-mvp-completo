@@ -430,6 +430,54 @@ def validate_valuation(
     )
 
 
+def validate_immediate_refusal(
+    payload: dict[str, Any],
+    expected_reason_code: str,
+    expected_condition: str,
+) -> str:
+    created_order = request_json(
+        method="POST",
+        path="/orders",
+        body=payload,
+        expected_status=201,
+    )
+
+    assert_equal(
+        created_order["status"],
+        "REFUSED",
+        f"status da recusa {expected_reason_code}",
+    )
+
+    internal_order_id = str(created_order["internal_order_id"])
+    refusal = request_json(
+        method="GET",
+        path=f"/orders/{internal_order_id}/refusal",
+    )
+
+    assert_equal(
+        refusal["reason_code"],
+        expected_reason_code,
+        f"motivo da recusa {expected_reason_code}",
+    )
+    assert_equal(
+        refusal["evidence"]["condition"],
+        expected_condition,
+        f"condição da recusa {expected_reason_code}",
+    )
+
+    persisted_order = request_json(
+        method="GET",
+        path=f"/orders/{internal_order_id}",
+    )
+    assert_equal(
+        persisted_order["status"],
+        "REFUSED",
+        f"status persistido da recusa {expected_reason_code}",
+    )
+
+    return internal_order_id
+
+
 def run_integration_test() -> None:
     print(f"URL da API: {BASE_URL}")
     print(f"Nome esperado: {EXPECTED_APP_NAME}")
@@ -756,6 +804,50 @@ def run_integration_test() -> None:
     if duplicate_response is None:
         raise AssertionError("A resposta de duplicidade está vazia.")
 
+    print("Verificando recusa (b) por inconsistência de cidade/UF/IBGE...")
+    mismatch_external_order_id = f"INTEGRATION-REFUSAL-B-{uuid.uuid4().hex[:8].upper()}"
+    mismatch_payload = build_order_payload(mismatch_external_order_id)
+    mismatch_payload["property"]["state"] = "RJ"
+    mismatch_payload["property"]["city"] = "Rio de Janeiro"
+    mismatch_internal_order_id = validate_immediate_refusal(
+        payload=mismatch_payload,
+        expected_reason_code="TR_9_5_B",
+        expected_condition="CITY_DATA_MISMATCH",
+    )
+
+    print("Verificando recusa (c) por conflito de interesse...")
+    conflict_external_order_id = f"INTEGRATION-REFUSAL-C-{uuid.uuid4().hex[:8].upper()}"
+    conflict_payload = build_order_payload(conflict_external_order_id)
+    conflict_payload["conflict_of_interest"] = {
+        "has_conflict": True,
+        "conflict_type": "RELATED_PARTY",
+        "description": "Vínculo declarado no teste automatizado de integração.",
+        "identified_by": "INTEGRATION_TEST",
+    }
+    conflict_internal_order_id = validate_immediate_refusal(
+        payload=conflict_payload,
+        expected_reason_code="TR_9_5_C",
+        expected_condition="CONFLICT_OF_INTEREST_DECLARED",
+    )
+
+    print("Verificando recusa (d) por imprecisão de localização...")
+    location_external_order_id = f"INTEGRATION-REFUSAL-D-{uuid.uuid4().hex[:8].upper()}"
+    location_payload = build_order_payload(location_external_order_id)
+    location_payload["location_confirmation"] = {
+        "is_confirmed": True,
+        "confirmation_method": "CNEFE",
+        "evidence_reference": "INTEGRATION-LOCATION-OVER-50M",
+        "verified_by": "INTEGRATION_TEST",
+        "latitude": -23.55052,
+        "longitude": -46.633308,
+        "accuracy_meters": 51,
+    }
+    location_internal_order_id = validate_immediate_refusal(
+        payload=location_payload,
+        expected_reason_code="TR_9_5_D",
+        expected_condition="LOCATION_NOT_CONFIRMED",
+    )
+
     refused_external_order_id = f"INTEGRATION-REFUSED-{uuid.uuid4().hex[:8].upper()}"
 
     print("Preparando cidade temporaria sem preco-base...")
@@ -894,6 +986,12 @@ def run_integration_test() -> None:
     print("Valor estimado: R$ 735.000,00")
     print("Status final: COMPLETED")
     print("Duplicidade: bloqueada com HTTP 409")
+    print(
+        "Recusas imediatas: "
+        f"TR_9_5_B={mismatch_internal_order_id}; "
+        f"TR_9_5_C={conflict_internal_order_id}; "
+        f"TR_9_5_D={location_internal_order_id}"
+    )
 
 
 def main() -> int:
