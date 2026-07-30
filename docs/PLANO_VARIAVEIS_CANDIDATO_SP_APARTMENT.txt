@@ -3,9 +3,12 @@ PLANO DE VARIÁVEIS DO MODELO AVM
 
 CLASSIFICAÇÃO: CANDIDATO TÉCNICO - NÃO APROVADO
 
-Este documento é uma proposta reproduzível para iniciar a coleta e os testes.
+Este documento é uma proposta reproduzível para planejar uma eventual coleta
+e os testes.
 Não representa homologação, parecer, assinatura ou decisão do Responsável
 Técnico. O endpoint estatístico continuará retornando homologated=false.
+Enquanto não houver aprovação expressa do Responsável Técnico, este plano não
+autoriza coleta real, ajuste, ativação ou uso operacional de modelo.
 
 1. IDENTIFICAÇÃO
 
@@ -40,11 +43,13 @@ Regra para valores extremos: conferir fonte e características; marcar para
 análise de influência; excluir somente por decisão documentada. É proibida a
 exclusão automática ou silenciosa.
 
-Opção selecionada para o candidato:
-[X] usable_market_value_brl
+Opção proposta para análise e decisão do RT:
+[P] usable_market_value_brl
 [ ] price_per_m2_brl
 [ ] log do valor de mercado
 [ ] outra
+
+Legenda: [P] proposta técnica pendente; [X] aprovada expressamente pelo RT.
 
 3. VARIÁVEIS EXPLICATIVAS
 
@@ -65,7 +70,7 @@ Regra para valor ausente: excluir do ajuste com motivo documentado.
 Regra para valor extremo: conferir matrícula, anúncio e coerência com a
 tipologia; não excluir apenas por distância estatística.
 Forma de conferência: documento do imóvel e evidência da fonte.
-Aprovada para teste: SIM, condicionada à decisão do RT.
+Aprovada para teste: NÃO - proposta pendente de decisão do RT.
 
 3.2 Latitude centralizada
 
@@ -82,7 +87,7 @@ um sentido geográfico sempre valoriza o imóvel.
 Regra para valor ausente: excluir do ajuste com motivo documentado.
 Regra para valor extremo: conferir município e evidência de geocodificação.
 Forma de conferência: coordenada auditável e accuracy_meters <= 50.
-Aprovada para teste: SIM, condicionada à decisão do RT.
+Aprovada para teste: NÃO - proposta pendente de decisão do RT.
 
 3.3 Longitude centralizada
 
@@ -99,7 +104,7 @@ um sentido geográfico sempre valoriza o imóvel.
 Regra para valor ausente: excluir do ajuste com motivo documentado.
 Regra para valor extremo: conferir município e evidência de geocodificação.
 Forma de conferência: coordenada auditável e accuracy_meters <= 50.
-Aprovada para teste: SIM, condicionada à decisão do RT.
+Aprovada para teste: NÃO - proposta pendente de decisão do RT.
 
 3.4 Quartos
 
@@ -116,7 +121,7 @@ com a colinearidade com área.
 Regra para valor ausente: não usar no ajuste até conferência.
 Regra para valor extremo: conferir fonte e coerência com a área.
 Forma de conferência: documento ou anúncio preservado.
-Aprovada para teste: SIM, condicionada à decisão do RT.
+Aprovada para teste: NÃO - proposta pendente de decisão do RT.
 
 3.5 Banheiros
 
@@ -132,7 +137,7 @@ sanitária tende a elevar o valor.
 Regra para valor ausente: não usar no ajuste até conferência.
 Regra para valor extremo: conferir fonte e coerência com a área.
 Forma de conferência: documento ou anúncio preservado.
-Aprovada para teste: SIM, condicionada à decisão do RT.
+Aprovada para teste: NÃO - proposta pendente de decisão do RT.
 
 3.6 Vagas
 
@@ -148,7 +153,7 @@ tendem a elevar o valor.
 Regra para valor ausente: não usar no ajuste até conferência.
 Regra para valor extremo: conferir fonte, matrícula e coerência.
 Forma de conferência: documento ou anúncio preservado.
-Aprovada para teste: SIM, condicionada à decisão do RT.
+Aprovada para teste: NÃO - proposta pendente de decisão do RT.
 
 3.7 Idade
 
@@ -164,7 +169,7 @@ edifício, maior idade tende a reduzir o valor.
 Regra para valor ausente: não usar no ajuste até conferência.
 Regra para valor extremo: conferir ano de construção e reformas relevantes.
 Forma de conferência: documento, cadastro ou fonte preservada.
-Aprovada para teste: SIM, condicionada à decisão do RT.
+Aprovada para teste: NÃO - proposta pendente de decisão do RT.
 
 3.8 Variáveis não incluídas no candidato inicial
 
@@ -219,7 +224,7 @@ Grau I:   N mínimo = 3 x (7 + 1) = 24
 Grau II:  N mínimo = 4 x (7 + 1) = 32
 Grau III: N mínimo = 6 x (7 + 1) = 48
 
-Grau pretendido: III para o candidato submetido à revisão.
+Grau proposto: III para o candidato a ser submetido à revisão do RT.
 Quantidade mínima calculada: 48 observações válidas.
 Margem adicional para exclusões: 50% sobre o mínimo.
 Quantidade planejada para coleta: pelo menos 72 observações válidas após
@@ -243,18 +248,20 @@ Ofertas duplicadas: combinar endereço, coordenadas, área, características,
 preço, imagens e referência; manter uma ocorrência representativa e registrar
 as demais como excluídas por duplicidade.
 
-8. CRITÉRIOS DE EXCLUSÃO
+8. CRITÉRIOS DE EXCLUSÃO PROPOSTOS
 
-[X] fonte não verificável
-[X] duplicidade
-[X] divergência de endereço
-[X] localização com precisão superior a 50 metros
-[X] área não comprovada
-[X] preço inconsistente sem confirmação
-[X] tipologia incompatível
-[X] data fora do período aprovado
-[X] ausência de variável obrigatória após tentativa de conferência
-[X] observação fora do município ou domínio de aplicação
+Os critérios abaixo são propostas pendentes de aprovação expressa do RT:
+
+[P] fonte não verificável
+[P] duplicidade
+[P] divergência de endereço
+[P] localização com precisão superior a 50 metros
+[P] área não comprovada
+[P] preço inconsistente sem confirmação
+[P] tipologia incompatível
+[P] data fora do período aprovado
+[P] ausência de variável obrigatória após tentativa de conferência
+[P] observação fora do município ou domínio de aplicação
 
 Toda exclusão deverá permanecer registrada com observation_id,
 exclusion_reason, data, responsável e evidência da decisão. Outlier estatístico
@@ -297,6 +304,12 @@ Assinatura: PENDENTE
 DECISÃO OPERACIONAL
 ===================
 
-Este plano autoriza apenas a preparação e a coleta controlada de dados para
-estudo, sem uso contratual. Ele não autoriza ativação de modelo, emissão de
-laudo, avaliação para crédito ou alteração de ALLOW_SYNTHETIC_PRICING.
+Enquanto permanecer como NÃO APROVADO, este plano autoriza apenas a preparação
+administrativa da estrutura de trabalho e a revisão da minuta pelo RT. Não
+autoriza iniciar coleta real, ajustar ou ativar modelo, emitir laudo, realizar
+avaliação para crédito ou alterar ALLOW_SYNTHETIC_PRICING.
+
+Após a aprovação expressa do RT, deverá ser gerada uma nova versão imutável
+deste documento, com identificação do aprovador, registro profissional, data,
+ressalvas e assinatura. A coleta somente poderá seguir conforme essa versão
+aprovada.
