@@ -53,7 +53,7 @@ Legenda: [P] proposta técnica pendente; [X] aprovada expressamente pelo RT.
 
 3. VARIÁVEIS EXPLICATIVAS
 
-Quantidade inicial: k = 7.
+Quantidade inicial proposta: k = 7.
 
 3.1 Área privativa
 
@@ -188,9 +188,10 @@ variáveis explicativas do candidato inicial.
 [ ] variável indicadora
 [ ] interação entre variáveis
 [ ] segmentação
-[X] nenhuma no candidato inicial
+[P] nenhuma no candidato inicial
 
-Detalhamento e justificativa: o primeiro ajuste deve servir como linha de base.
+Detalhamento e justificativa proposta: o primeiro candidato poderá servir como
+linha de base, caso essa abordagem seja aprovada pelo RT.
 Transformações, interações e segmentações somente poderão entrar em candidatos
 separados, com hipótese anterior ao ajuste, versão própria e comparação por
 diagnósticos, PRESS/LOOCV, resíduos, precisão e coerência econômica.
@@ -227,7 +228,7 @@ Grau III: N mínimo = 6 x (7 + 1) = 48
 Grau proposto: III para o candidato a ser submetido à revisão do RT.
 Quantidade mínima calculada: 48 observações válidas.
 Margem adicional para exclusões: 50% sobre o mínimo.
-Quantidade planejada para coleta: pelo menos 72 observações válidas após
+Quantidade proposta para coleta: pelo menos 72 observações válidas após
 saneamento; recomenda-se coletar 90 registros brutos para suportar exclusões.
 
 O tamanho numérico não garante representatividade, significância, precisão,
@@ -263,11 +264,14 @@ Os critérios abaixo são propostas pendentes de aprovação expressa do RT:
 [P] ausência de variável obrigatória após tentativa de conferência
 [P] observação fora do município ou domínio de aplicação
 
-Toda exclusão deverá permanecer registrada com observation_id,
-exclusion_reason, data, responsável e evidência da decisão. Outlier estatístico
-isoladamente não constitui motivo suficiente para exclusão.
+Se algum critério for aprovado e aplicado, toda exclusão deverá permanecer
+registrada com observation_id, exclusion_reason, data, responsável e evidência
+da decisão. Outlier estatístico isoladamente não constitui motivo suficiente
+para exclusão.
 
-9. GATES DO CANDIDATO
+9. GATES PROPOSTOS PARA O CANDIDATO
+
+Os gates abaixo são propostas pendentes de validação e aprovação do RT:
 
 - matriz com posto completo e graus de liberdade positivos;
 - valores finitos e valores de mercado positivos;
@@ -285,7 +289,7 @@ isoladamente não constitui motivo suficiente para exclusão.
 10. APROVAÇÃO PARA COLETA
 
 Quantidade de variáveis proposta: 7
-Grau de fundamentação pretendido: III
+Grau de fundamentação proposto: III
 Plano aprovado: NÃO - CANDIDATO PENDENTE DE REVISÃO
 Ressalvas:
 - validar a adequação da tendência espacial linear para São Paulo;
