@@ -2,12 +2,21 @@ import json
 import secrets
 from typing import Annotated
 
-from fastapi import Header, HTTPException, status
+from fastapi import HTTPException, Security, status
+from fastapi.security import APIKeyHeader
 
 from app.core.config import (
     ADMIN_ACTOR,
     ADMIN_API_KEY,
     ADMIN_CREDENTIALS_JSON,
+)
+
+
+admin_api_key_header = APIKeyHeader(
+    name="X-Admin-API-Key",
+    scheme_name="AdminApiKey",
+    description="Chave administrativa vinculada a uma identidade autorizada.",
+    auto_error=False,
 )
 
 
@@ -103,7 +112,7 @@ def _load_admin_credentials() -> dict[str, str]:
 def require_admin_api_key(
     x_admin_api_key: Annotated[
         str | None,
-        Header(alias="X-Admin-API-Key"),
+        Security(admin_api_key_header),
     ] = None,
 ) -> str:
     credentials = _load_admin_credentials()
