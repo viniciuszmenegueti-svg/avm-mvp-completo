@@ -8,7 +8,10 @@ from app.core.config import APP_ENV, CLIENT_CREDENTIALS_JSON
 
 
 def _authentication_required() -> bool:
-    return APP_ENV.lower() in {"production", "prod"} or bool(CLIENT_CREDENTIALS_JSON)
+    environment = APP_ENV.strip().lower()
+    return environment not in {"development", "dev", "test"} or bool(
+        CLIENT_CREDENTIALS_JSON
+    )
 
 
 def _load_client_credentials() -> dict[str, str]:

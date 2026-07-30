@@ -1,20 +1,20 @@
 services:
   postgres:
     image: postgres:16.4
-    container_name: avm-postgres
+    container_name: ${POSTGRES_CONTAINER_NAME:-avm-postgres}
     environment:
-      POSTGRES_DB: avm
-      POSTGRES_USER: avm_app
+      POSTGRES_DB: ${POSTGRES_DB:-avm}
+      POSTGRES_USER: ${POSTGRES_USER:-avm_app}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5433:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - avm-postgres-data:/var/lib/postgresql/data
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "pg_isready -U avm_app -d avm"
+          "pg_isready -U ${POSTGRES_USER:-avm_app} -d ${POSTGRES_DB:-avm}"
         ]
       interval: 5s
       timeout: 5s
@@ -26,9 +26,9 @@ services:
       context: .
       dockerfile: Dockerfile
     image: avm-api:local
-    container_name: avm-api
+    container_name: ${API_CONTAINER_NAME:-avm-api}
     environment:
-      DATABASE_URL: postgresql+psycopg://avm_app:${POSTGRES_PASSWORD}@postgres:5432/avm
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-avm_app}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-avm}
       APP_NAME: ${APP_NAME:-AVM Imoveis API}
       APP_VERSION: ${APP_VERSION:-0.3.1}
       APP_ENV: ${APP_ENV:-development}
@@ -40,7 +40,7 @@ services:
       ADMIN_ACTOR: ${ADMIN_ACTOR:-}
       CLIENT_CREDENTIALS_JSON: ${CLIENT_CREDENTIALS_JSON:-}
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8000}:8000"
     depends_on:
       postgres:
         condition: service_healthy

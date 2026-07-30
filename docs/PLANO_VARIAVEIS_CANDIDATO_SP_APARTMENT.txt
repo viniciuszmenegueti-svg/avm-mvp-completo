@@ -1,0 +1,302 @@
+PLANO DE VARIÁVEIS DO MODELO AVM
+================================
+
+CLASSIFICAÇÃO: CANDIDATO TÉCNICO - NÃO APROVADO
+
+Este documento é uma proposta reproduzível para iniciar a coleta e os testes.
+Não representa homologação, parecer, assinatura ou decisão do Responsável
+Técnico. O endpoint estatístico continuará retornando homologated=false.
+
+1. IDENTIFICAÇÃO
+
+Dataset: SP-3550308-APARTMENT-2026-CANDIDATE-001
+Município/UF: São Paulo/SP
+Código IBGE: 3550308
+Tipologia: APARTMENT
+Data de elaboração: 2026-07-29
+Elaborado por: minuta técnica da plataforma AVM
+Responsável Técnico: PENDENTE
+Objetivo do modelo: estimar o valor de mercado de apartamentos no município de
+São Paulo para diagnóstico de um modelo candidato, com base real, rastreável,
+versionada e submetida posteriormente à revisão do Responsável Técnico.
+
+2. VARIÁVEL DEPENDENTE
+
+Nome: valor de mercado utilizável
+Campo de origem: usable_market_value_brl
+Unidade: reais (BRL)
+Definição operacional: valor total de mercado aceito para a observação após
+conferência da fonte, data, tipologia, localização, áreas e eventual diferença
+entre preço de oferta e preço efetivo.
+Fonte: evidência indicada em source_reference e evidence_file.
+Transformação pretendida: nenhuma no candidato inicial.
+Justificativa da transformação: o motor atual produz estimativa e intervalo na
+escala informada. Manter BRL evita tratar uma estimativa logarítmica como valor
+monetário sem implementar e validar a transformação inversa e sua correção de
+viés. Uma alternativa logarítmica poderá ser comparada como outro candidato.
+Regra para valores ausentes: a observação não entra no ajuste e permanece no
+dataset com data_validated=FALSE e exclusion_reason preenchido.
+Regra para valores extremos: conferir fonte e características; marcar para
+análise de influência; excluir somente por decisão documentada. É proibida a
+exclusão automática ou silenciosa.
+
+Opção selecionada para o candidato:
+[X] usable_market_value_brl
+[ ] price_per_m2_brl
+[ ] log do valor de mercado
+[ ] outra
+
+3. VARIÁVEIS EXPLICATIVAS
+
+Quantidade inicial: k = 7.
+
+3.1 Área privativa
+
+Nome: área privativa
+Campo de origem: private_area_m2
+Conceito representado: dimensão privativa da unidade autônoma.
+Unidade ou escala: metros quadrados.
+Tipo: quantitativa contínua.
+Transformação: nenhuma no candidato inicial.
+Sinal econômico esperado: positivo.
+Hipótese e justificativa: mantidas as demais características, maior área
+privativa tende a elevar o valor total.
+Regra para valor ausente: excluir do ajuste com motivo documentado.
+Regra para valor extremo: conferir matrícula, anúncio e coerência com a
+tipologia; não excluir apenas por distância estatística.
+Forma de conferência: documento do imóvel e evidência da fonte.
+Aprovada para teste: SIM, condicionada à decisão do RT.
+
+3.2 Latitude centralizada
+
+Nome: latitude centralizada
+Campo de origem: latitude
+Conceito representado: componente norte-sul da localização.
+Unidade ou escala: graus decimais menos a latitude de referência calculada e
+registrada na versão do dataset.
+Tipo: quantitativa contínua derivada.
+Transformação: latitude - latitude_referencia.
+Sinal econômico esperado: não definido.
+Hipótese e justificativa: controlar tendência espacial linear sem presumir que
+um sentido geográfico sempre valoriza o imóvel.
+Regra para valor ausente: excluir do ajuste com motivo documentado.
+Regra para valor extremo: conferir município e evidência de geocodificação.
+Forma de conferência: coordenada auditável e accuracy_meters <= 50.
+Aprovada para teste: SIM, condicionada à decisão do RT.
+
+3.3 Longitude centralizada
+
+Nome: longitude centralizada
+Campo de origem: longitude
+Conceito representado: componente leste-oeste da localização.
+Unidade ou escala: graus decimais menos a longitude de referência calculada e
+registrada na versão do dataset.
+Tipo: quantitativa contínua derivada.
+Transformação: longitude - longitude_referencia.
+Sinal econômico esperado: não definido.
+Hipótese e justificativa: controlar tendência espacial linear sem presumir que
+um sentido geográfico sempre valoriza o imóvel.
+Regra para valor ausente: excluir do ajuste com motivo documentado.
+Regra para valor extremo: conferir município e evidência de geocodificação.
+Forma de conferência: coordenada auditável e accuracy_meters <= 50.
+Aprovada para teste: SIM, condicionada à decisão do RT.
+
+3.4 Quartos
+
+Nome: quantidade de quartos
+Campo de origem: bedrooms
+Conceito representado: capacidade funcional residencial.
+Unidade ou escala: contagem inteira.
+Tipo: quantitativa discreta.
+Transformação: nenhuma no candidato inicial.
+Sinal econômico esperado: positivo.
+Hipótese e justificativa: mantidas área e demais características, maior
+capacidade funcional pode elevar o valor; o sinal deve ser revisto em conjunto
+com a colinearidade com área.
+Regra para valor ausente: não usar no ajuste até conferência.
+Regra para valor extremo: conferir fonte e coerência com a área.
+Forma de conferência: documento ou anúncio preservado.
+Aprovada para teste: SIM, condicionada à decisão do RT.
+
+3.5 Banheiros
+
+Nome: quantidade de banheiros
+Campo de origem: bathrooms
+Conceito representado: capacidade sanitária e padrão funcional.
+Unidade ou escala: contagem inteira.
+Tipo: quantitativa discreta.
+Transformação: nenhuma no candidato inicial.
+Sinal econômico esperado: positivo.
+Hipótese e justificativa: mantidas as demais características, maior capacidade
+sanitária tende a elevar o valor.
+Regra para valor ausente: não usar no ajuste até conferência.
+Regra para valor extremo: conferir fonte e coerência com a área.
+Forma de conferência: documento ou anúncio preservado.
+Aprovada para teste: SIM, condicionada à decisão do RT.
+
+3.6 Vagas
+
+Nome: quantidade de vagas
+Campo de origem: parking_spaces
+Conceito representado: disponibilidade privativa de estacionamento.
+Unidade ou escala: contagem inteira.
+Tipo: quantitativa discreta.
+Transformação: nenhuma no candidato inicial.
+Sinal econômico esperado: positivo.
+Hipótese e justificativa: mantidas as demais características, vagas adicionais
+tendem a elevar o valor.
+Regra para valor ausente: não usar no ajuste até conferência.
+Regra para valor extremo: conferir fonte, matrícula e coerência.
+Forma de conferência: documento ou anúncio preservado.
+Aprovada para teste: SIM, condicionada à decisão do RT.
+
+3.7 Idade
+
+Nome: idade da construção
+Campo de origem: age_years
+Conceito representado: depreciação temporal física e funcional.
+Unidade ou escala: anos completos na data de referência.
+Tipo: quantitativa contínua não negativa.
+Transformação: nenhuma no candidato inicial.
+Sinal econômico esperado: negativo.
+Hipótese e justificativa: na ausência de reforma ou efeito específico de
+edifício, maior idade tende a reduzir o valor.
+Regra para valor ausente: não usar no ajuste até conferência.
+Regra para valor extremo: conferir ano de construção e reformas relevantes.
+Forma de conferência: documento, cadastro ou fonte preservada.
+Aprovada para teste: SIM, condicionada à decisão do RT.
+
+3.8 Variáveis não incluídas no candidato inicial
+
+floor_number: pendente de cobertura e análise de interação com elevador.
+has_elevator: pendente de cobertura e análise de interação com andar.
+conservation_state: pendente de escala objetiva e reprodutível.
+neighborhood: não usar como número ordinal; eventual codificação indicadora
+deve criar outro candidato e recalcular k e o tamanho mínimo da amostra.
+asking_price_brl e transaction_price_brl: campos de origem e conferência, não
+variáveis explicativas do candidato inicial.
+
+4. INTERAÇÕES E TRANSFORMAÇÕES
+
+[ ] logaritmo
+[ ] potência
+[ ] variável indicadora
+[ ] interação entre variáveis
+[ ] segmentação
+[X] nenhuma no candidato inicial
+
+Detalhamento e justificativa: o primeiro ajuste deve servir como linha de base.
+Transformações, interações e segmentações somente poderão entrar em candidatos
+separados, com hipótese anterior ao ajuste, versão própria e comparação por
+diagnósticos, PRESS/LOOCV, resíduos, precisão e coerência econômica.
+
+5. CONTROLE DE COLINEARIDADE
+
+Pares potencialmente correlacionados:
+- private_area_m2 x bedrooms;
+- private_area_m2 x bathrooms;
+- bedrooms x bathrooms;
+- latitude centralizada x longitude centralizada, dependendo da distribuição;
+- age_years x variáveis omitidas de padrão ou conservação.
+
+Critério de análise:
+- matriz do modelo com posto completo;
+- matriz de correlação documentada;
+- VIF calculado fora do endpoint atual e anexado ao relatório;
+- VIF acima de 10 impede o avanço do candidato;
+- VIF entre 5 e 10 exige análise e decisão expressa do RT;
+- estabilidade de sinais e coeficientes em análise de sensibilidade.
+
+Decisão para retenção ou exclusão: nenhuma variável será excluída apenas para
+melhorar R². Toda alteração exige justificativa econômica, nova execução,
+registro do diagnóstico e preservação do candidato anterior.
+
+6. DIMENSIONAMENTO DA AMOSTRA
+
+Número de variáveis explicativas planejadas, k: 7
+
+Grau I:   N mínimo = 3 x (7 + 1) = 24
+Grau II:  N mínimo = 4 x (7 + 1) = 32
+Grau III: N mínimo = 6 x (7 + 1) = 48
+
+Grau pretendido: III para o candidato submetido à revisão.
+Quantidade mínima calculada: 48 observações válidas.
+Margem adicional para exclusões: 50% sobre o mínimo.
+Quantidade planejada para coleta: pelo menos 72 observações válidas após
+saneamento; recomenda-se coletar 90 registros brutos para suportar exclusões.
+
+O tamanho numérico não garante representatividade, significância, precisão,
+generalização ou homologação.
+
+7. REPRESENTATIVIDADE
+
+Período de referência: janela máxima inicial de 12 meses, com datas preservadas;
+ajustes temporais dependem de decisão do RT e de fonte verificável.
+Região coberta: município de São Paulo, sem extrapolação para outro município.
+Faixa de valores: definida após análise exploratória, sem cortes silenciosos.
+Faixa de áreas: definida após coleta, preservando o domínio de aplicação.
+Distribuição por bairros: monitorar cobertura e concentração; não aceitar uma
+base municipal dominada por poucos bairros.
+Concentração por fonte: nenhuma fonte deve ser tratada como independente quando
+replicar anúncios de outra origem; a origem primária deve ser identificada.
+Ofertas duplicadas: combinar endereço, coordenadas, área, características,
+preço, imagens e referência; manter uma ocorrência representativa e registrar
+as demais como excluídas por duplicidade.
+
+8. CRITÉRIOS DE EXCLUSÃO
+
+[X] fonte não verificável
+[X] duplicidade
+[X] divergência de endereço
+[X] localização com precisão superior a 50 metros
+[X] área não comprovada
+[X] preço inconsistente sem confirmação
+[X] tipologia incompatível
+[X] data fora do período aprovado
+[X] ausência de variável obrigatória após tentativa de conferência
+[X] observação fora do município ou domínio de aplicação
+
+Toda exclusão deverá permanecer registrada com observation_id,
+exclusion_reason, data, responsável e evidência da decisão. Outlier estatístico
+isoladamente não constitui motivo suficiente para exclusão.
+
+9. GATES DO CANDIDATO
+
+- matriz com posto completo e graus de liberdade positivos;
+- valores finitos e valores de mercado positivos;
+- grau de amostra III: N/(k+1) >= 6;
+- maior p-valor dos regressores <= 0,10 para grau III;
+- amplitude do intervalo de confiança de 80% <= 30% para grau III;
+- sinais positivos para private_area_m2, bedrooms, bathrooms e parking_spaces;
+- sinal negativo para age_years;
+- latitude e longitude centralizadas sem gate de sinal;
+- PRESS e RMSE de LOOCV documentados;
+- limiar relativo de LOOCV ainda PENDENTE de decisão do RT;
+- análise de resíduos, influência, heterocedasticidade e estabilidade anexada;
+- fonte e trilha de saneamento completas.
+
+10. APROVAÇÃO PARA COLETA
+
+Quantidade de variáveis proposta: 7
+Grau de fundamentação pretendido: III
+Plano aprovado: NÃO - CANDIDATO PENDENTE DE REVISÃO
+Ressalvas:
+- validar a adequação da tendência espacial linear para São Paulo;
+- fixar as coordenadas de referência antes do ajuste;
+- definir o limiar relativo de PRESS/LOOCV;
+- avaliar variável temporal quando a coleta abranger período relevante;
+- confirmar sinais econômicos condicionais de quartos e banheiros;
+- verificar se a cobertura espacial permite um único modelo municipal;
+- criar candidatos alternativos se houver segmentação ou efeitos não lineares.
+
+Nome do Responsável Técnico: PENDENTE
+Registro profissional: PENDENTE
+Data: PENDENTE
+Assinatura: PENDENTE
+
+DECISÃO OPERACIONAL
+===================
+
+Este plano autoriza apenas a preparação e a coleta controlada de dados para
+estudo, sem uso contratual. Ele não autoriza ativação de modelo, emissão de
+laudo, avaliação para crédito ou alteração de ALLOW_SYNTHETIC_PRICING.

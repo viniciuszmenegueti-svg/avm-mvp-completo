@@ -15,8 +15,16 @@ class UnsafeProductionConfiguration(RuntimeError):
     pass
 
 
+DEVELOPMENT_ENVIRONMENTS = frozenset({"development", "dev", "test"})
+SECURE_ENVIRONMENTS = frozenset({"homologation", "staging", "production", "prod"})
+KNOWN_ENVIRONMENTS = DEVELOPMENT_ENVIRONMENTS | SECURE_ENVIRONMENTS
+
+
 def production_configuration_errors() -> list[str]:
-    if APP_ENV.lower() not in {"production", "prod"}:
+    environment = APP_ENV.strip().lower()
+    if environment not in KNOWN_ENVIRONMENTS:
+        return ["APP_ENV must be one of: " + ", ".join(sorted(KNOWN_ENVIRONMENTS))]
+    if environment in DEVELOPMENT_ENVIRONMENTS:
         return []
 
     errors: list[str] = []
@@ -24,7 +32,7 @@ def production_configuration_errors() -> list[str]:
         errors.append("APP_DEBUG must be false")
     if ALLOW_SYNTHETIC_PRICING:
         errors.append("ALLOW_SYNTHETIC_PRICING must be false")
-    if DATABASE_URL.startswith("sqlite"):
+    if not DATABASE_URL.startswith(("postgresql://", "postgresql+psycopg://")):
         errors.append("DATABASE_URL must use the production PostgreSQL database")
     if ADMIN_API_KEY:
         errors.append("legacy ADMIN_API_KEY is forbidden; use ADMIN_CREDENTIALS_JSON")
