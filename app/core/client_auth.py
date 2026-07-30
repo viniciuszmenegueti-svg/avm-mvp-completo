@@ -2,9 +2,18 @@ import json
 import secrets
 from typing import Annotated
 
-from fastapi import Header, HTTPException, status
+from fastapi import HTTPException, Security, status
+from fastapi.security import APIKeyHeader
 
 from app.core.config import APP_ENV, CLIENT_CREDENTIALS_JSON
+
+
+client_api_key_header = APIKeyHeader(
+    name="X-Client-API-Key",
+    scheme_name="ClientApiKey",
+    description="Chave da integração cliente autorizada.",
+    auto_error=False,
+)
 
 
 def _authentication_required() -> bool:
@@ -60,7 +69,7 @@ def _load_client_credentials() -> dict[str, str]:
 def require_client_api_key(
     x_client_api_key: Annotated[
         str | None,
-        Header(alias="X-Client-API-Key"),
+        Security(client_api_key_header),
     ] = None,
 ) -> str:
     if not _authentication_required():
