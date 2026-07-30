@@ -14,11 +14,6 @@ load_dotenv(
 )
 
 DATABASE_DIRECTORY = PROJECT_ROOT / "data" / "database"
-DATABASE_DIRECTORY.mkdir(
-    parents=True,
-    exist_ok=True,
-)
-
 DATABASE_FILE = DATABASE_DIRECTORY / "avm.db"
 
 DEFAULT_DATABASE_URL = f"sqlite:///{DATABASE_FILE.as_posix()}"
@@ -31,6 +26,10 @@ DATABASE_URL = os.getenv(
 connect_args: dict = {}
 
 if DATABASE_URL.startswith("sqlite"):
+    DATABASE_DIRECTORY.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
     connect_args = {
         "check_same_thread": False,
     }

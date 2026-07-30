@@ -124,20 +124,26 @@ Exemplo de configuração:
 
 ```env
 APP_NAME=AVM Imoveis API
-APP_VERSION=0.2.0
+APP_VERSION=0.3.1
 APP_ENV=development
 APP_DEBUG=false
 LOG_LEVEL=INFO
+ALLOW_SYNTHETIC_PRICING=false
 
-ADMIN_CREDENTIALS_JSON={"admin-local":"change_this_admin_key","pricing-admin":"change_this_pricing_key"}
+ADMIN_CREDENTIALS_JSON={"admin-local":"replace_with_at_least_24_random_characters","pricing-admin":"replace_with_another_24_random_characters"}
 
 ADMIN_API_KEY=
 ADMIN_ACTOR=
+CLIENT_CREDENTIALS_JSON={"caixa-integration":"replace_with_at_least_24_random_characters"}
 
 POSTGRES_DB=avm
 POSTGRES_USER=avm_app
 POSTGRES_PASSWORD=avm_local_password
 POSTGRES_PORT=5433
+POSTGRES_CONTAINER_NAME=avm-postgres
+
+API_PORT=8000
+API_CONTAINER_NAME=avm-api
 
 DATABASE_URL=postgresql+psycopg://avm_app:avm_local_password@localhost:5433/avm
 ```
@@ -181,6 +187,10 @@ Para encerrar e remover os volumes:
 ```powershell
 docker compose down -v
 ```
+
+Para executar uma instância isolada de homologação, com autenticação
+obrigatória, portas próprias e bloqueio do modo sintético, consulte
+[`docs/GUIA_TESTES_HOMOLOGACAO.md`](docs/GUIA_TESTES_HOMOLOGACAO.md).
 
 ## Execução local sem Docker
 
