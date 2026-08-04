@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 import unicodedata
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -88,7 +89,11 @@ def read_csv(path: Path) -> tuple[list[dict[str, str]], list[str]]:
         return list(reader), list(reader.fieldnames)
 
 
-def write_csv(path: Path, rows: list[dict[str, object]], fields: list[str]) -> None:
+def write_csv(
+    path: Path,
+    rows: Iterable[Mapping[str, object]],
+    fields: Sequence[str],
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
     with temporary.open("w", encoding="utf-8-sig", newline="") as destination:
@@ -96,6 +101,23 @@ def write_csv(path: Path, rows: list[dict[str, object]], fields: list[str]) -> N
         writer.writeheader()
         writer.writerows(rows)
     temporary.replace(path)
+
+
+def update_queue_registration(
+    queue_row: dict[str, object],
+    *,
+    source_url: str,
+    asking_price_brl: str,
+    status: str,
+) -> None:
+    """Record collection progress without rewriting the planned portal."""
+    queue_row.update(
+        {
+            "source_url": source_url,
+            "asking_price_brl": asking_price_brl,
+            "status": status,
+        }
+    )
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -322,13 +344,11 @@ def main() -> int:
                 "A observaÃ§Ã£o nÃ£o foi encontrada de forma Ãºnica na fila."
             )
         queue_row = matching_queue[0]
-        queue_row.update(
-            {
-                "preferred_portal": args.source_portal,
-                "source_url": args.source_url,
-                "asking_price_brl": args.asking_price_brl,
-                "status": record["collection_status"],
-            }
+        update_queue_registration(
+            queue_row,
+            source_url=args.source_url,
+            asking_price_brl=args.asking_price_brl,
+            status=record["collection_status"],
         )
         queue_temporary = queue_path.with_suffix(queue_path.suffix + ".tmp")
         queue_temporary.write_text(
