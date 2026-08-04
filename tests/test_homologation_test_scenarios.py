@@ -48,3 +48,26 @@ def test_sp_remains_the_default_scenario() -> None:
     assert order["property"]["city_ibge_code"] == "3550308"
     assert training["city_ibge_code"] == "3550308"
     assert training["dataset_metadata"]["scenario"] == "SP"
+
+
+def test_reuses_only_the_matching_active_shadow_model() -> None:
+    module = load_homologation_script()
+    expected = {
+        "model_id": "rj-shadow",
+        "status": "HOMOLOGATION_APPROVED",
+        "city_ibge_code": "3304557",
+        "property_type": "APARTMENT",
+        "dependent_variable": "usable_market_value_brl",
+        "dataset_version": "SHADOW-SYNTHETIC-RJ-SHADOW-EXISTING",
+        "contractual_validity": False,
+    }
+    listing = {
+        "items": [
+            {**expected, "city_ibge_code": "3550308"},
+            {**expected, "status": "CANDIDATE"},
+            expected,
+        ]
+    }
+
+    assert module.find_active_shadow_model(listing, "rj") == expected
+    assert module.find_active_shadow_model(listing, "sp") is None

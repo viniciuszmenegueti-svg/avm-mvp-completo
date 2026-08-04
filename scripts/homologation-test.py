@@ -244,6 +244,30 @@ def build_shadow_training_payload(
     }
 
 
+def find_active_shadow_model(
+    listing: dict[str, Any],
+    scenario_name: str,
+) -> dict[str, Any] | None:
+    items = listing.get("items")
+    if not isinstance(items, list):
+        raise AssertionError("A listagem de modelos não contém uma lista de itens.")
+    scenario = SCENARIOS[scenario_name]
+    dataset_prefix = f"SHADOW-SYNTHETIC-{scenario_name.upper()}-"
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        if (
+            item.get("status") == "HOMOLOGATION_APPROVED"
+            and item.get("city_ibge_code") == scenario["city_ibge_code"]
+            and item.get("property_type") == "APARTMENT"
+            and item.get("dependent_variable") == "usable_market_value_brl"
+            and str(item.get("dataset_version", "")).startswith(dataset_prefix)
+            and item.get("contractual_validity") is False
+        ):
+            return item
+    return None
+
+
 def run(args: argparse.Namespace) -> dict[str, Any]:
     env_values = read_env_file(args.env_file)
     configured_environment = env_values.get("APP_ENV", "").strip().lower()
@@ -355,34 +379,44 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 "HOMOLOGATION_SHADOW exige duas credenciais administrativas "
                 "distintas para separar treino e revisão."
             )
-        reviewer_headers = {"X-Admin-API-Key": admin_keys[1]}
-        model_version = f"SHADOW-{uuid.uuid4().hex[:12].upper()}"
-        model = request_json(
+        registered_models = request_json(
             base_url=args.base_url,
-            method="POST",
-            path="/statistical-models/train",
-            expected_status=201,
-            headers=admin_headers,
-            body=build_shadow_training_payload(model_version, args.scenario),
-        )
-        assert_value(model.get("status"), "CANDIDATE", "status do candidato")
-        model = request_json(
-            base_url=args.base_url,
-            method="POST",
-            path=f"/statistical-models/{model['model_id']}/approve-homologation",
+            method="GET",
+            path="/statistical-models",
             expected_status=200,
-            headers=reviewer_headers,
-            body={
-                "approval_reference": (
-                    "AUTOMATED-TECHNICAL-HOMOLOGATION-NON-CONTRACTUAL"
-                )
-            },
+            headers=admin_headers,
         )
+        model = find_active_shadow_model(registered_models, args.scenario)
+        if model is None:
+            reviewer_headers = {"X-Admin-API-Key": admin_keys[1]}
+            model_version = f"SHADOW-{uuid.uuid4().hex[:12].upper()}"
+            model = request_json(
+                base_url=args.base_url,
+                method="POST",
+                path="/statistical-models/train",
+                expected_status=201,
+                headers=admin_headers,
+                body=build_shadow_training_payload(model_version, args.scenario),
+            )
+            assert_value(model.get("status"), "CANDIDATE", "status do candidato")
+            model = request_json(
+                base_url=args.base_url,
+                method="POST",
+                path=f"/statistical-models/{model['model_id']}/approve-homologation",
+                expected_status=200,
+                headers=reviewer_headers,
+                body={
+                    "approval_reference": (
+                        "AUTOMATED-TECHNICAL-HOMOLOGATION-NON-CONTRACTUAL"
+                    )
+                },
+            )
         assert_value(
             model.get("status"),
             "HOMOLOGATION_APPROVED",
             "aprovação exclusiva de homologação",
         )
+        model_version = str(model["model_version"])
         model_pdf = request_bytes(
             base_url=args.base_url,
             path=f"/statistical-models/{model['model_id']}/report.pdf",
