@@ -35,6 +35,14 @@ def test_accepts_coordinate_at_contract_accuracy_limit() -> None:
     )
 
     assert declaration.meets_contract_accuracy is True
+    assert declaration.has_auditable_contract_coordinates is True
+
+
+def test_does_not_mark_missing_coordinates_as_auditable() -> None:
+    declaration = LocationConfirmationDeclaration()
+
+    assert declaration.meets_contract_accuracy is True
+    assert declaration.has_auditable_contract_coordinates is False
 
 
 def test_rejects_accuracy_without_coordinates() -> None:

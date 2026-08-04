@@ -10,7 +10,12 @@ from app.domain.city_valuation_price_history_model import (
 from app.domain.city_valuation_price_model import (
     CityValuationPriceModel,
 )
+from app.domain.cnefe_address_model import CnefeAddressModel
+from app.domain.cnefe_import_model import CnefeImportModel
+from app.domain.geocoding_audit_model import GeocodingAuditModel
 from app.domain.order_model import OrderModel
+from app.domain.statistical_dataset_model import StatisticalDatasetModel
+from app.domain.statistical_model_version_model import StatisticalModelVersionModel
 from app.domain.order_refusal_model import OrderRefusalModel
 from app.domain.order_status_history_model import (
     OrderStatusHistoryModel,
@@ -37,6 +42,11 @@ MODEL_CLASSES = (
     CityModel,
     CityValuationPriceModel,
     CityValuationPriceHistoryModel,
+    CnefeAddressModel,
+    CnefeImportModel,
+    GeocodingAuditModel,
+    StatisticalDatasetModel,
+    StatisticalModelVersionModel,
     OrderModel,
     PropertyModel,
     PropertyAssetModel,

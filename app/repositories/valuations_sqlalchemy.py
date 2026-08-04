@@ -24,6 +24,10 @@ def create_valuation(
     calculated_at: datetime,
     factors: dict[str, str] | None = None,
     confidence_reasons: list[str] | None = None,
+    execution_mode: str = "DEMONSTRATION",
+    statistical_model_id: str | None = None,
+    model_artifact_sha256: str | None = None,
+    dataset_sha256: str | None = None,
     commit: bool = True,
 ) -> ValuationResponse:
     database_valuation = ValuationModel(
@@ -41,6 +45,10 @@ def create_valuation(
         confidence_reasons_json=json.dumps(
             confidence_reasons or [], ensure_ascii=False
         ),
+        execution_mode=execution_mode,
+        statistical_model_id=statistical_model_id,
+        model_artifact_sha256=model_artifact_sha256,
+        dataset_sha256=dataset_sha256,
         calculated_at=calculated_at,
     )
     session.add(database_valuation)
@@ -85,5 +93,10 @@ def valuation_model_to_response(
         confidence_reasons=json.loads(
             database_valuation.confidence_reasons_json or "[]"
         ),
+        execution_mode=database_valuation.execution_mode,
+        statistical_model_id=database_valuation.statistical_model_id,
+        model_artifact_sha256=database_valuation.model_artifact_sha256,
+        dataset_sha256=database_valuation.dataset_sha256,
+        contractual_validity=(database_valuation.execution_mode == "CONTRACTUAL"),
         calculated_at=database_valuation.calculated_at,
     )

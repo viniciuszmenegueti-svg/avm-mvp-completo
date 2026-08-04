@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 
+from app.repositories.orders_sqlalchemy import get_order_by_internal_id
 from app.schemas.order import OrderCreate, OrderResponse, OrderStatus
 from app.schemas.order_refusal import OrderRefusalCreate, OrderRefusalReason
 from app.services.order_refusal_service import refuse_order_with_evidence
@@ -11,10 +12,18 @@ def refuse_order_for_unconfirmed_location(
     internal_order_id: str,
     order: OrderCreate,
     commit: bool = True,
+    require_auditable: bool = False,
+    changed_by: str = "system",
+    request_id: str | None = None,
 ) -> OrderResponse | None:
     declaration = order.location_confirmation
 
-    if declaration.meets_contract_accuracy:
+    location_acceptable = (
+        declaration.has_auditable_contract_coordinates
+        if require_auditable
+        else declaration.meets_contract_accuracy
+    )
+    if location_acceptable:
         return None
 
     try:
@@ -22,6 +31,10 @@ def refuse_order_for_unconfirmed_location(
             session=session,
             internal_order_id=internal_order_id,
             new_status=OrderStatus.VALIDATING_INPUT,
+            changed_by=changed_by,
+            request_id=request_id,
+            reason_code="INPUT_VALIDATION_STARTED",
+            context={"source": "location_confirmation"},
             commit=False,
         )
 
@@ -38,7 +51,11 @@ def refuse_order_for_unconfirmed_location(
                 "suficiente para a execução da avaliação."
             ),
             evidence={
-                "condition": "LOCATION_NOT_CONFIRMED",
+                "condition": (
+                    "LOCATION_NOT_AUDITABLE"
+                    if require_auditable and declaration.is_confirmed
+                    else "LOCATION_NOT_CONFIRMED"
+                ),
                 "confirmation_method": declaration.confirmation_method,
                 "evidence_reference": declaration.evidence_reference,
                 "failure_reason": declaration.failure_reason,
@@ -60,6 +77,10 @@ def refuse_order_for_unconfirmed_location(
                 "declaration_source": "order.location_confirmation",
                 "is_confirmed": declaration.is_confirmed,
                 "meets_contract_accuracy": declaration.meets_contract_accuracy,
+                "has_auditable_contract_coordinates": (
+                    declaration.has_auditable_contract_coordinates
+                ),
+                "auditable_location_required": require_auditable,
             },
             model_version=None,
             dataset_version=None,
@@ -69,6 +90,8 @@ def refuse_order_for_unconfirmed_location(
             session=session,
             internal_order_id=internal_order_id,
             refusal=refusal,
+            changed_by=changed_by,
+            request_id=request_id,
             commit=False,
         )
 
@@ -77,18 +100,12 @@ def refuse_order_for_unconfirmed_location(
                 session.rollback()
             return None
 
-        refused_order = validating_order.model_copy(
-            update={
-                "status": OrderStatus.REFUSED,
-            }
-        )
-
         if commit:
             session.commit()
         else:
             session.flush()
 
-        return refused_order
+        return get_order_by_internal_id(session, internal_order_id)
 
     except Exception:
         if commit:

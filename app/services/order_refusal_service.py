@@ -20,12 +20,15 @@ from app.schemas.order_refusal import (
     OrderRefusalResponse,
 )
 from app.services.order_status import validate_order_status_transition
+from app.services.order_status_update import resolve_audit_request_id
 
 
 def refuse_order_with_evidence(
     session: Session,
     internal_order_id: str,
     refusal: OrderRefusalCreate,
+    changed_by: str = "system",
+    request_id: str | None = None,
     commit: bool = True,
 ) -> OrderRefusalResponse | None:
     order = get_order_by_internal_id(
@@ -65,6 +68,7 @@ def refuse_order_with_evidence(
             session=session,
             internal_order_id=internal_order_id,
             new_status=OrderStatus.REFUSED,
+            responded_at=refused_at,
             commit=False,
         )
 
@@ -78,6 +82,13 @@ def refuse_order_with_evidence(
             internal_order_id=internal_order_id,
             previous_status=order.status,
             new_status=OrderStatus.REFUSED,
+            changed_by=changed_by,
+            request_id=resolve_audit_request_id(request_id),
+            reason_code=refusal.reason_code.value,
+            context={
+                "contract_reference": refusal.contract_reference,
+                "condition": refusal.evidence.get("condition"),
+            },
             commit=False,
         )
 

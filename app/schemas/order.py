@@ -21,6 +21,12 @@ class OrderStatus(StrEnum):
     CANCELLED = "CANCELLED"
 
 
+class OrderSlaOutcome(StrEnum):
+    PENDING = "PENDING"
+    WITHIN_SLA = "WITHIN_SLA"
+    BREACHED = "BREACHED"
+
+
 class ConflictOfInterestDeclaration(BaseModel):
     has_conflict: bool = Field(
         default=False,
@@ -108,6 +114,15 @@ class LocationConfirmationDeclaration(BaseModel):
         description="Origem ou responsável pela verificação da localização.",
         examples=["VALIDATION_PIPELINE"],
     )
+    geocoding_audit_id: str | None = Field(
+        default=None,
+        min_length=36,
+        max_length=36,
+        description=(
+            "Identificador da auditoria MATCHED que originou as coordenadas "
+            "quando confirmation_method for CNEFE_IBGE."
+        ),
+    )
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
     accuracy_meters: float | None = Field(
@@ -118,6 +133,16 @@ class LocationConfirmationDeclaration(BaseModel):
 
     @model_validator(mode="after")
     def validate_location_confirmation(self) -> Self:
+        uses_cnefe = (self.confirmation_method or "").strip().upper() == "CNEFE_IBGE"
+        if uses_cnefe and self.geocoding_audit_id is None:
+            raise ValueError(
+                "geocoding_audit_id é obrigatório para o método CNEFE_IBGE."
+            )
+        if not uses_cnefe and self.geocoding_audit_id is not None:
+            raise ValueError(
+                "geocoding_audit_id somente pode ser usado com CNEFE_IBGE."
+            )
+
         has_latitude = self.latitude is not None
         has_longitude = self.longitude is not None
         if has_latitude != has_longitude:
@@ -151,6 +176,19 @@ class LocationConfirmationDeclaration(BaseModel):
             or self.accuracy_meters <= self.MAXIMUM_CONTRACT_ACCURACY_METERS
         )
 
+    @property
+    def has_auditable_contract_coordinates(self) -> bool:
+        return (
+            self.is_confirmed
+            and self.latitude is not None
+            and self.longitude is not None
+            and self.accuracy_meters is not None
+            and self.accuracy_meters <= self.MAXIMUM_CONTRACT_ACCURACY_METERS
+            and self.confirmation_method is not None
+            and self.evidence_reference is not None
+            and self.verified_by is not None
+        )
+
 
 class OrderCreate(BaseModel):
     external_order_id: str = Field(
@@ -173,7 +211,14 @@ class OrderResponse(BaseModel):
     external_order_id: str
     status: OrderStatus
     received_at: datetime
+    response_deadline_at: datetime
+    responded_at: datetime | None = None
+    response_elapsed_seconds: float = Field(ge=0)
+    sla_outcome: OrderSlaOutcome
     property: PropertyInput
+    location_confirmation: LocationConfirmationDeclaration = Field(
+        default_factory=LocationConfirmationDeclaration,
+    )
 
 
 class OrderListResponse(BaseModel):
@@ -198,4 +243,10 @@ class OrderFromPropertyAssetCreate(BaseModel):
     property_asset_id: str = Field(
         min_length=36,
         max_length=36,
+    )
+    conflict_of_interest: ConflictOfInterestDeclaration = Field(
+        default_factory=ConflictOfInterestDeclaration,
+    )
+    location_confirmation: LocationConfirmationDeclaration = Field(
+        default_factory=LocationConfirmationDeclaration,
     )
