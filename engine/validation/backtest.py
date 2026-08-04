@@ -86,6 +86,13 @@ class BacktestSummary:
         return asdict(self)
 
 
+def _required_conclusive_metric(value: float | None, field_name: str) -> float:
+    assert value is not None, (
+        f"Resultado conclusivo sem a métrica obrigatória {field_name}."
+    )
+    return value
+
+
 def _is_extrapolation(
     features: tuple[float, ...], feature_ranges: tuple[tuple[float, float], ...]
 ) -> bool:
@@ -255,13 +262,27 @@ def run_exploratory_backtest(
         for result in conclusive
         if result.status == BacktestStatus.APPROVED_EXPLORATORY
     ]
-    errors = [float(result.signed_error_brl) for result in conclusive]
-    absolute_errors = [float(result.absolute_error_brl) for result in conclusive]
+    errors = [
+        _required_conclusive_metric(result.signed_error_brl, "signed_error_brl")
+        for result in conclusive
+    ]
+    absolute_errors = [
+        _required_conclusive_metric(result.absolute_error_brl, "absolute_error_brl")
+        for result in conclusive
+    ]
     absolute_percentage_errors = [
-        float(result.absolute_percentage_error) for result in conclusive
+        _required_conclusive_metric(
+            result.absolute_percentage_error,
+            "absolute_percentage_error",
+        )
+        for result in conclusive
     ]
     signed_percentage_errors = [
-        float(result.signed_percentage_error) for result in conclusive
+        _required_conclusive_metric(
+            result.signed_percentage_error,
+            "signed_percentage_error",
+        )
+        for result in conclusive
     ]
     summary = BacktestSummary(
         observation_count=len(results),

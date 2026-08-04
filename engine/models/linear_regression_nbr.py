@@ -14,7 +14,7 @@ from math import sqrt
 import numpy as np
 from numpy.typing import NDArray
 from scipy.stats import chi2, f as fisher_f, normaltest, shapiro  # type: ignore[import-untyped]
-from scipy.stats import t as student_t  # type: ignore[import-untyped]
+from scipy.stats import t as student_t
 
 
 FloatArray = NDArray[np.float64]
