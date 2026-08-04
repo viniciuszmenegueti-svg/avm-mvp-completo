@@ -21,6 +21,12 @@ PORTAL_SEQUENCE = (
 )
 
 
+def planned_portal(sequence: int) -> str:
+    if sequence < 1 or sequence > len(PORTAL_SEQUENCE):
+        raise ValueError("A sequencia da observacao esta fora do plano da celula.")
+    return PORTAL_SEQUENCE[sequence - 1]
+
+
 def read_csv(path: Path) -> list[dict[str, str]]:
     with path.open("r", encoding="utf-8-sig", newline="") as source:
         return list(csv.DictReader(source))
@@ -67,11 +73,10 @@ def main() -> int:
                 else "PREPARED_PENDING_COLLECTION"
             )
             source_url = existing["source_url"] if existing is not None else ""
-            source_portal = (
-                existing["source_portal"]
-                if existing is not None
-                else PORTAL_SEQUENCE[sequence - 1]
-            )
+            # Keep the collection design separate from the portal effectively
+            # found by the collector. The latter is preserved in the master
+            # register and must not rewrite the planned source distribution.
+            source_portal = planned_portal(sequence)
             asking_price = existing["asking_price_brl"] if existing is not None else ""
 
             record = {
