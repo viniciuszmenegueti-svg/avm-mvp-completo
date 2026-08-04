@@ -1,5 +1,9 @@
+from datetime import datetime
+from typing import Any
+
 from sqlalchemy.orm import Session
 
+from app.core.request_id import get_request_id
 from app.domain.exceptions import (
     InvalidOrderStatusTransitionError,
 )
@@ -23,6 +27,11 @@ def update_order_status_with_history(
     session: Session,
     internal_order_id: str,
     new_status: OrderStatus,
+    changed_by: str = "system",
+    request_id: str | None = None,
+    reason_code: str = "STATUS_TRANSITION",
+    context: dict[str, Any] | None = None,
+    responded_at: datetime | None = None,
     commit: bool = True,
 ) -> OrderResponse | None:
     existing_order = get_order_by_internal_id(
@@ -43,6 +52,7 @@ def update_order_status_with_history(
             session=session,
             internal_order_id=internal_order_id,
             new_status=new_status,
+            responded_at=responded_at,
             commit=False,
         )
 
@@ -56,6 +66,10 @@ def update_order_status_with_history(
             internal_order_id=internal_order_id,
             previous_status=existing_order.status,
             new_status=new_status,
+            changed_by=changed_by,
+            request_id=resolve_audit_request_id(request_id),
+            reason_code=reason_code,
+            context=context,
             commit=False,
         )
 
@@ -74,3 +88,10 @@ def update_order_status_with_history(
         if commit:
             session.rollback()
         raise
+
+
+def resolve_audit_request_id(request_id: str | None) -> str:
+    value = request_id or get_request_id()
+    if not value or value == "-":
+        return "internal"
+    return value[:128]

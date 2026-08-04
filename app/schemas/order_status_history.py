@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -20,3 +21,7 @@ class OrderStatusHistoryResponse(BaseModel):
     previous_status: OrderStatus
     new_status: OrderStatus
     changed_at: datetime
+    changed_by: str = Field(min_length=1, max_length=100)
+    request_id: str = Field(min_length=1, max_length=128)
+    reason_code: str = Field(min_length=1, max_length=100)
+    context: dict[str, Any] = Field(default_factory=dict)

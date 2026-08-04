@@ -1,10 +1,14 @@
+import json
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
     String,
+    Text,
+    event,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -46,3 +50,41 @@ class OrderStatusHistoryModel(Base):
         nullable=False,
         server_default=func.now(),
     )
+
+    changed_by: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+        default="system",
+    )
+
+    request_id: Mapped[str] = mapped_column(
+        String(128),
+        nullable=False,
+        default="internal",
+        index=True,
+    )
+
+    reason_code: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+        default="STATUS_TRANSITION",
+    )
+
+    context_json: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        default="{}",
+    )
+
+    @property
+    def context(self) -> dict[str, Any]:
+        value = json.loads(self.context_json or "{}")
+        return value if isinstance(value, dict) else {}
+
+
+def _reject_history_mutation(*_: object, **__: object) -> None:
+    raise RuntimeError("O histórico de status é append-only.")
+
+
+event.listen(OrderStatusHistoryModel, "before_update", _reject_history_mutation)
+event.listen(OrderStatusHistoryModel, "before_delete", _reject_history_mutation)

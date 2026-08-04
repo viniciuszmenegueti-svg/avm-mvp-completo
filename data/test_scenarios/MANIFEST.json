@@ -1,0 +1,23 @@
+{
+  "categories": {
+    "BOUNDARY": 240,
+    "CONFLICT_REFUSAL": 30,
+    "DATA_REFUSAL": 30,
+    "LOCATION_REFUSAL": 60,
+    "NOMINAL": 270,
+    "SCHEMA_ERROR": 60,
+    "UNICODE": 30
+  },
+  "city_count": 10,
+  "contract_eligible": false,
+  "dataset_purpose": "SYSTEM_TEST_ONLY",
+  "expected_http_statuses": {
+    "201": 660,
+    "422": 60
+  },
+  "property_type_count": 3,
+  "scenario_count": 720,
+  "scenarios_per_segment": 24,
+  "sha256": "c5ef993ee55c103912ea640d7d14258484abb1dc229824fd65ae0b2614219af6",
+  "synthetic": true
+}

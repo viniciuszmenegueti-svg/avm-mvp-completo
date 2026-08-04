@@ -2,7 +2,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.domain.property_asset_model import PropertyAssetModel
-from app.schemas.property_asset import PropertyAssetCreate, PropertyAssetUpdate
+from app.schemas.property_asset import PropertyAssetCreate
 
 
 def create_property_asset(
@@ -67,13 +67,17 @@ def list_property_assets(
 def update_property_asset(
     session: Session,
     property_asset_id: str,
-    update: PropertyAssetUpdate,
+    property_asset: PropertyAssetCreate,
 ) -> PropertyAssetModel | None:
     asset = session.get(PropertyAssetModel, property_asset_id)
     if asset is None:
         return None
-    for field, value in update.model_dump(exclude_unset=True).items():
+
+    # Recebe um estado completo já validado. O flush torna valores gerados pelo
+    # banco (como updated_at) disponíveis para validar a resposta, mas deixa o
+    # commit sob responsabilidade da rota: uma falha posterior ainda faz rollback.
+    for field, value in property_asset.model_dump().items():
         setattr(asset, field, value)
-    session.commit()
+    session.flush()
     session.refresh(asset)
     return asset

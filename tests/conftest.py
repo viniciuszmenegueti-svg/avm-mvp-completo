@@ -16,9 +16,12 @@ os.environ["APP_DEBUG"] = "false"
 os.environ["LOG_LEVEL"] = "INFO"
 os.environ["ALLOW_SYNTHETIC_PRICING"] = "true"
 
-os.environ["ADMIN_CREDENTIALS_JSON"] = ""
-os.environ["ADMIN_API_KEY"] = "avm-test-admin-key"
-os.environ["ADMIN_ACTOR"] = "avm-test-admin"
+os.environ["ADMIN_CREDENTIALS_JSON"] = (
+    '{"avm-test-admin":"avm-test-admin-key",'
+    '"avm-test-reviewer":"avm-test-reviewer-key"}'
+)
+os.environ["ADMIN_API_KEY"] = ""
+os.environ["ADMIN_ACTOR"] = ""
 
 from app.domain.city_model import CityModel
 from app.domain.city_valuation_price_history_model import (
@@ -27,6 +30,9 @@ from app.domain.city_valuation_price_history_model import (
 from app.domain.city_valuation_price_model import (
     CityValuationPriceModel,
 )
+from app.domain.cnefe_address_model import CnefeAddressModel
+from app.domain.cnefe_import_model import CnefeImportModel
+from app.domain.geocoding_audit_model import GeocodingAuditModel
 from app.domain.order_model import OrderModel
 from app.domain.order_refusal_model import OrderRefusalModel
 from app.domain.order_status_history_model import (
@@ -34,6 +40,8 @@ from app.domain.order_status_history_model import (
 )
 from app.domain.property_asset_model import PropertyAssetModel
 from app.domain.property_model import PropertyModel
+from app.domain.statistical_dataset_model import StatisticalDatasetModel
+from app.domain.statistical_model_version_model import StatisticalModelVersionModel
 from app.domain.valuation_model import ValuationModel
 from app.infrastructure.database import (
     Base,
@@ -131,8 +139,13 @@ Base.metadata.create_all(bind=engine)
 @pytest.fixture(autouse=True)
 def prepare_test_database() -> Generator[None, None, None]:
     with SessionLocal() as session:
+        session.execute(delete(GeocodingAuditModel))
+        session.execute(delete(CnefeAddressModel))
+        session.execute(delete(CnefeImportModel))
         session.execute(delete(CityValuationPriceHistoryModel))
         session.execute(delete(ValuationModel))
+        session.execute(delete(StatisticalModelVersionModel))
+        session.execute(delete(StatisticalDatasetModel))
         session.execute(delete(OrderRefusalModel))
         session.execute(delete(OrderStatusHistoryModel))
         session.execute(delete(PropertyAssetModel))
@@ -155,8 +168,13 @@ def prepare_test_database() -> Generator[None, None, None]:
     yield
 
     with SessionLocal() as session:
+        session.execute(delete(GeocodingAuditModel))
+        session.execute(delete(CnefeAddressModel))
+        session.execute(delete(CnefeImportModel))
         session.execute(delete(CityValuationPriceHistoryModel))
         session.execute(delete(ValuationModel))
+        session.execute(delete(StatisticalModelVersionModel))
+        session.execute(delete(StatisticalDatasetModel))
         session.execute(delete(OrderRefusalModel))
         session.execute(delete(OrderStatusHistoryModel))
         session.execute(delete(PropertyAssetModel))

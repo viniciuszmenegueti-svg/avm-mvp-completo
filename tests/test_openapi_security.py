@@ -31,6 +31,12 @@ def test_marks_client_and_admin_operations_as_protected() -> None:
     document = client.get("/openapi.json").json()
 
     assert document["paths"]["/orders"]["get"]["security"] == [{"ClientApiKey": []}]
+    assert document["paths"]["/orders/{internal_order_id}/process"]["post"][
+        "security"
+    ] == [{"ClientApiKey": []}]
+    assert document["paths"]["/geocoding/resolve"]["post"]["security"] == [
+        {"ClientApiKey": []}
+    ]
     assert document["paths"]["/admin/diagnostics"]["get"]["security"] == [
         {"AdminApiKey": []}
     ]
@@ -51,3 +57,14 @@ def test_does_not_expose_api_keys_as_optional_header_parameters() -> None:
     assert all(
         parameter["name"] != "X-Admin-API-Key" for parameter in diagnostic_parameters
     )
+
+
+def test_documents_idempotent_automatic_order_processing() -> None:
+    document = client.get("/openapi.json").json()
+    operation = document["paths"]["/orders/{internal_order_id}/process"]["post"]
+
+    assert "idempotente" in operation["summary"].lower()
+    assert operation["responses"]["200"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/OrderProcessResponse"
+    }
+    assert {"200", "404", "409", "422", "503"}.issubset(operation["responses"])

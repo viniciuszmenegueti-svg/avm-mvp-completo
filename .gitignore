@@ -70,3 +70,6 @@ dist/
 *.tmp
 *.temp
 ~$*
+tmp/
+outputs/
+output/

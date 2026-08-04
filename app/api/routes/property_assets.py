@@ -1,6 +1,7 @@
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import ValidationError
 
 from app.core.client_auth import require_client_api_key
 from app.infrastructure.dependencies import DatabaseSession
@@ -152,13 +153,12 @@ def update_property_asset(
     update: PropertyAssetUpdate,
     session: DatabaseSession,
 ) -> PropertyAssetResponse:
-    property_asset = update_property_asset_in_database(
+    current_property_asset = get_property_asset_by_id(
         session=session,
         property_asset_id=str(property_asset_id),
-        update=update,
     )
 
-    if property_asset is None:
+    if current_property_asset is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
@@ -168,4 +168,32 @@ def update_property_asset(
             },
         )
 
-    return PropertyAssetResponse.model_validate(property_asset)
+    current_state = {
+        field: getattr(current_property_asset, field)
+        for field in PropertyAssetCreate.model_fields
+    }
+    current_state.update(update.model_dump(exclude_unset=True))
+
+    try:
+        validated_property_asset = PropertyAssetCreate.model_validate(current_state)
+    except ValidationError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={
+                "code": "INVALID_PROPERTY_ASSET_UPDATE",
+                "message": ("A atualização deixaria o cadastro do imóvel inválido."),
+            },
+        ) from error
+
+    property_asset = update_property_asset_in_database(
+        session=session,
+        property_asset_id=str(property_asset_id),
+        property_asset=validated_property_asset,
+    )
+
+    # O objeto completo é validado antes do commit. Assim, inclusive uma falha
+    # inesperada na serialização da resposta não persiste o patch parcialmente.
+    response = PropertyAssetResponse.model_validate(property_asset)
+    session.commit()
+
+    return response

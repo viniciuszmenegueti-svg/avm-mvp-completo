@@ -2,6 +2,11 @@
 
 Nenhum item deve ser presumido. Cada marcação exige evidência arquivada.
 
+O modo `HOMOLOGATION_SHADOW` serve para ensaiar o fluxo com controles próximos
+da operação, porém sempre produz saída sem validade contratual e bloqueia a
+entrega. A aprovação deste checklist é externa ao software e não é inferida de
+testes automatizados.
+
 ## Dados e modelo
 
 - [ ] dataset real e versionado por cidade x tipologia;

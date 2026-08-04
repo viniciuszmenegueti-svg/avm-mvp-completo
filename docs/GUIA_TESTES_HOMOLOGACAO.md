@@ -51,6 +51,7 @@ caracteres. O arquivo deve manter:
 APP_ENV=homologation
 APP_DEBUG=false
 ALLOW_SYNTHETIC_PRICING=false
+MODEL_EXECUTION_MODE=HOMOLOGATION_SHADOW
 ```
 
 O Compose usa portas e nomes próprios, permitindo executar a homologação sem
@@ -79,13 +80,21 @@ python scripts/homologation-test.py `
 O teste deve comprovar:
 
 - `environment=homologation`;
+- `execution_mode=HOMOLOGATION_SHADOW`;
 - HTTP 401 sem credencial cliente ou administrativa;
 - HTTP 403 com credencial inválida;
 - acesso permitido com as credenciais corretas;
-- tentativa de usar o preço sintético bloqueada com HTTP 409;
-- dossiê de recusa `TR_9_5_A`;
-- condição `SYNTHETIC_PRICING_BLOCKED`;
+- criação persistente de dataset e modelo OLS candidatos, com SHA-256;
+- aprovação exclusivamente técnica para homologação sombra;
+- avaliação pela versão congelada do modelo, sem recalcular coeficientes;
+- emissão de PDF e CSV identificados como sem validade contratual;
+- bloqueio da transição para entrega com HTTP 409 e
+  `SHADOW_DELIVERY_BLOCKED`;
 - evidência JSON em `.audit/homologation-result.json`.
+
+A massa criada pelo script é sintética, identificada como não contratual e serve
+somente para provar o funcionamento do pipeline. Ela não pode ser reaproveitada
+como amostra de mercado ou aprovação do Responsável Técnico.
 
 Para encerrar sem apagar o banco de homologação:
 
@@ -100,8 +109,17 @@ Use `down -v` somente para uma instância comprovadamente descartável.
 
 ## 4. Homologação estatística
 
-O endpoint `POST /statistical-models/fit` produz apenas um candidato e sempre
-retorna `homologated=false`. Antes de uma decisão técnica, são obrigatórios:
+`POST /statistical-models/fit` continua sendo um diagnóstico não persistente e
+sempre retorna `homologated=false`. O fluxo de sombra usa:
+
+- `POST /statistical-models/train` para persistir dataset, matriz, diagnósticos,
+  coeficientes, vigência e hashes do candidato;
+- `POST /statistical-models/{id}/approve-homologation` para habilitá-lo somente
+  em `HOMOLOGATION_SHADOW`;
+- seleção automática da versão aprovada pela cidade, tipologia e vigência;
+- bloqueio de entrega e marcação `contractual_validity=false`.
+
+Antes de qualquer decisão contratual, são obrigatórios:
 
 - dataset real e imutável por cidade e tipologia;
 - fonte e evidência de cada observação;
@@ -133,5 +151,7 @@ Mesmo após a aprovação estatística, ainda permanecem como bloqueios:
 ## Regra de liberação
 
 `ALLOW_SYNTHETIC_PRICING` deve permanecer `false` em homologação e produção.
+`HOMOLOGATION_SHADOW` nunca autoriza entrega. O projeto não disponibiliza endpoint
+para transformar um modelo sombra em `CONTRACTUAL_ACTIVE`.
 Nenhum modelo pode ser ativado por cidade e tipologia sem dataset versionado,
 relatório do modelo, decisão do RT e evidências contratuais correspondentes.
