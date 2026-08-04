@@ -1,4 +1,4 @@
-﻿alembic==1.18.5
+alembic==1.18.5
 fastapi==0.139.2
 numpy==2.5.1
 openpyxl==3.1.5
@@ -7,4 +7,4 @@ python-dotenv==1.2.2
 reportlab==5.0.0
 scipy==1.18.0
 SQLAlchemy==2.0.51
-uvicorn[standard]==0.51.0
+uvicorn[standard]==0.52.0
