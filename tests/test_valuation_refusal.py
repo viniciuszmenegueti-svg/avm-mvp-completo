@@ -117,6 +117,7 @@ def test_refuses_order_when_base_price_is_missing() -> None:
         "city_ibge_code": "3304557",
         "property_type": "HOUSE",
         "pricing_method": "RULE_BASED_V1",
+        "execution_mode": "DEMONSTRATION",
     }
     assert refusal.contract_reference == "TR §9.5(a) e §9.6"
     assert refusal.evidence["condition"] == "MODEL_OR_DATASET_UNAVAILABLE"

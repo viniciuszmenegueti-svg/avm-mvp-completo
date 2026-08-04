@@ -1,5 +1,3 @@
-from unittest.mock import patch
-
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -37,10 +35,6 @@ def apartment_payload(
     }
 
 
-@patch(
-    "app.core.admin_auth.ADMIN_ACTOR",
-    "valuation-integration-test",
-)
 def test_updated_price_changes_valuation_result() -> None:
     update_response = client.patch(
         "/cities/3550308/valuation-prices/APARTMENT",
@@ -90,4 +84,4 @@ def test_updated_price_changes_valuation_result() -> None:
     history = history_response.json()
 
     assert history["total"] == 1
-    assert history["items"][0]["changed_by"] == "valuation-integration-test"
+    assert history["items"][0]["changed_by"] == "avm-test-admin"

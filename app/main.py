@@ -2,11 +2,15 @@ from typing import cast
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
+from fastapi.staticfiles import StaticFiles
 from starlette.types import ExceptionHandler
 
 from app.api.routes.admin_diagnostics import router as admin_diagnostics_router
 from app.api.routes.cities import router as cities_router
+from app.api.routes.cockpit import STATIC_DIRECTORY
+from app.api.routes.cockpit import router as cockpit_router
 from app.api.routes.health import router as health_router
+from app.api.routes.geocoding import router as geocoding_router
 from app.api.routes.model_versions import (
     router as model_versions_router,
 )
@@ -20,6 +24,7 @@ from app.api.routes.orders import router as orders_router
 from app.api.routes.property_assets import (
     router as property_assets_router,
 )
+from app.api.routes.statistical_models import router as statistical_models_router
 from app.api.routes.valuations import router as valuations_router
 from app.core.config import (
     APP_DEBUG,
@@ -75,11 +80,13 @@ def root() -> dict[str, str]:
         "version": APP_VERSION,
         "status": "running",
         "documentation": "/docs",
+        "cockpit": "/cockpit",
     }
 
 
 app.include_router(health_router)
 app.include_router(admin_diagnostics_router)
+app.include_router(geocoding_router)
 app.include_router(orders_router)
 app.include_router(property_assets_router)
 app.include_router(valuations_router)
@@ -87,3 +94,10 @@ app.include_router(order_refusals_router)
 app.include_router(order_status_history_router)
 app.include_router(cities_router)
 app.include_router(model_versions_router)
+app.include_router(statistical_models_router)
+app.include_router(cockpit_router)
+app.mount(
+    "/cockpit-assets",
+    StaticFiles(directory=STATIC_DIRECTORY),
+    name="cockpit-assets",
+)

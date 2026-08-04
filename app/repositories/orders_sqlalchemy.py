@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from sqlalchemy import func, select
@@ -8,13 +8,25 @@ from sqlalchemy.orm import Session
 from app.domain.order_model import OrderModel
 from app.domain.property_model import PropertyModel
 from app.schemas.order import (
+    LocationConfirmationDeclaration,
     OrderCreate,
     OrderResponse,
+    OrderSlaOutcome,
     OrderStatus,
 )
 from app.schemas.property import (
     PropertyInput,
     PropertyType,
+)
+
+
+ORDER_RESPONSE_SLA_SECONDS = 300
+TERMINAL_RESPONSE_STATUSES = frozenset(
+    {
+        OrderStatus.COMPLETED,
+        OrderStatus.REFUSED,
+        OrderStatus.CANCELLED,
+    }
 )
 
 
@@ -31,8 +43,20 @@ def create_order(
         external_order_id=order.external_order_id,
         status=OrderStatus.RECEIVED.value,
         received_at=received_at,
+        response_deadline_at=received_at
+        + timedelta(seconds=ORDER_RESPONSE_SLA_SECONDS),
+        responded_at=None,
         property_asset_id=property_asset_id,
         property_json=order.property.model_dump_json(),
+        location_is_confirmed=order.location_confirmation.is_confirmed,
+        location_confirmation_method=(order.location_confirmation.confirmation_method),
+        location_evidence_reference=(order.location_confirmation.evidence_reference),
+        location_failure_reason=order.location_confirmation.failure_reason,
+        location_verified_by=order.location_confirmation.verified_by,
+        latitude=order.location_confirmation.latitude,
+        longitude=order.location_confirmation.longitude,
+        location_accuracy_meters=order.location_confirmation.accuracy_meters,
+        geocoding_audit_id=order.location_confirmation.geocoding_audit_id,
     )
 
     database_order.property_record = PropertyModel(
@@ -138,12 +162,77 @@ def order_model_to_response(
             json.loads(database_order.property_json)
         )
 
+    location_confirmation = location_model_to_declaration(database_order)
+    received_at = _as_utc(database_order.received_at)
+    response_deadline_at = _as_utc(database_order.response_deadline_at)
+    responded_at = (
+        None
+        if database_order.responded_at is None
+        else _as_utc(database_order.responded_at)
+    )
+    elapsed_seconds, sla_outcome = calculate_response_sla(
+        received_at=received_at,
+        response_deadline_at=response_deadline_at,
+        responded_at=responded_at,
+    )
+
     return OrderResponse(
         internal_order_id=database_order.internal_order_id,
         external_order_id=database_order.external_order_id,
         status=OrderStatus(database_order.status),
-        received_at=database_order.received_at,
+        received_at=received_at,
+        response_deadline_at=response_deadline_at,
+        responded_at=responded_at,
+        response_elapsed_seconds=elapsed_seconds,
+        sla_outcome=sla_outcome,
         property=property_data,
+        location_confirmation=location_confirmation,
+    )
+
+
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def calculate_response_sla(
+    received_at: datetime,
+    response_deadline_at: datetime,
+    responded_at: datetime | None,
+    observed_at: datetime | None = None,
+) -> tuple[float, OrderSlaOutcome]:
+    received_utc = _as_utc(received_at)
+    deadline_utc = _as_utc(response_deadline_at)
+    effective_at = _as_utc(responded_at or observed_at or datetime.now(timezone.utc))
+    elapsed_seconds = max(0.0, (effective_at - received_utc).total_seconds())
+
+    if responded_at is None and effective_at <= deadline_utc:
+        outcome = OrderSlaOutcome.PENDING
+    elif effective_at <= deadline_utc:
+        outcome = OrderSlaOutcome.WITHIN_SLA
+    else:
+        outcome = OrderSlaOutcome.BREACHED
+
+    return round(elapsed_seconds, 3), outcome
+
+
+def location_model_to_declaration(
+    database_order: OrderModel,
+) -> LocationConfirmationDeclaration:
+    if database_order.location_is_confirmed is None:
+        return LocationConfirmationDeclaration()
+
+    return LocationConfirmationDeclaration(
+        is_confirmed=database_order.location_is_confirmed,
+        confirmation_method=database_order.location_confirmation_method,
+        evidence_reference=database_order.location_evidence_reference,
+        failure_reason=database_order.location_failure_reason,
+        verified_by=database_order.location_verified_by,
+        latitude=decimal_to_float(database_order.latitude),
+        longitude=decimal_to_float(database_order.longitude),
+        accuracy_meters=decimal_to_float(database_order.location_accuracy_meters),
+        geocoding_audit_id=database_order.geocoding_audit_id,
     )
 
 
@@ -182,6 +271,7 @@ def update_order_status(
     session: Session,
     internal_order_id: str,
     new_status: OrderStatus,
+    responded_at: datetime | None = None,
     commit: bool = True,
 ) -> OrderResponse | None:
     database_order = session.get(
@@ -193,6 +283,8 @@ def update_order_status(
         return None
 
     database_order.status = new_status.value
+    if new_status in TERMINAL_RESPONSE_STATUSES and database_order.responded_at is None:
+        database_order.responded_at = responded_at or datetime.now(timezone.utc)
 
     if commit:
         session.commit()

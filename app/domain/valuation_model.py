@@ -30,6 +30,16 @@ class ValuationModel(Base):
     confidence_reasons_json: Mapped[str] = mapped_column(
         Text, nullable=False, default="[]"
     )
+    execution_mode: Mapped[str] = mapped_column(
+        String(40), nullable=False, default="DEMONSTRATION"
+    )
+    statistical_model_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("statistical_model_versions.model_id", ondelete="RESTRICT"),
+        nullable=True,
+    )
+    model_artifact_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    dataset_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     calculated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )

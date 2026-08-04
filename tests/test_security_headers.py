@@ -3,38 +3,28 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
-client = TestClient(
-    app,
-    raise_server_exceptions=False,
-)
+client = TestClient(app)
 
 
-def assert_security_headers(response) -> None:
-    assert response.headers["X-Content-Type-Options"] == "nosniff"
-
-    assert response.headers["X-Frame-Options"] == "DENY"
-
-    assert response.headers["Referrer-Policy"] == "no-referrer"
-
-    assert response.headers["Cache-Control"] == "no-store"
-
-
-def test_adds_security_headers_to_success_response() -> None:
-    response = client.get("/")
-
-    assert response.status_code == 200
-    assert_security_headers(response)
+def test_adds_browser_security_headers_to_success_and_error_responses() -> None:
+    for path in ("/health/live", "/route-that-does-not-exist"):
+        response = client.get(path)
+        assert response.headers["x-content-type-options"] == "nosniff"
+        assert response.headers["x-frame-options"] == "DENY"
+        assert response.headers["referrer-policy"] == "no-referrer"
+        assert response.headers["cache-control"] == "no-store"
+        assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
+        assert response.headers["permissions-policy"].startswith("camera=()")
+        assert response.headers["cross-origin-resource-policy"] == "same-origin"
+        assert response.headers["x-permitted-cross-domain-policies"] == "none"
 
 
-def test_adds_security_headers_to_not_found_response() -> None:
-    response = client.get("/rota-inexistente")
+def test_hsts_is_only_emitted_when_transport_is_https() -> None:
+    plain = client.get("/health/live")
+    secure_client = TestClient(app, base_url="https://testserver")
+    secure = secure_client.get("/health/live")
 
-    assert response.status_code == 404
-    assert_security_headers(response)
-
-
-def test_adds_security_headers_to_validation_error() -> None:
-    response = client.get("/orders/identificador-invalido")
-
-    assert response.status_code == 422
-    assert_security_headers(response)
+    assert "strict-transport-security" not in plain.headers
+    assert secure.headers["strict-transport-security"] == (
+        "max-age=31536000; includeSubDomains"
+    )

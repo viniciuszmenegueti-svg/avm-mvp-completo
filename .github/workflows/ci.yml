@@ -35,7 +35,7 @@ jobs:
       # Em produção, deve permanecer false.
       ALLOW_SYNTHETIC_PRICING: "true"
 
-      ADMIN_CREDENTIALS_JSON: '{"ci-admin":"ci_admin_key"}'
+      ADMIN_CREDENTIALS_JSON: '{"ci-admin":"ci_admin_key_with_24_chars"}'
 
     steps:
       - name: Baixar o codigo

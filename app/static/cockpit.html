@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>Cockpit AVM</title>
+    <link rel="stylesheet" href="/cockpit-assets/cockpit.css">
+    <script src="/cockpit-assets/cockpit.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">CAIXA CR 012/2026 · ambiente controlado</p>
+        <h1>Cockpit AVM</h1>
+        <p class="subtitle">Receber, validar, processar e baixar evidências em um único lugar.</p>
+      </div>
+      <div id="health-badge" class="health health-waiting" role="status" aria-live="polite">
+        Verificando ambiente…
+      </div>
+    </header>
+
+    <main id="conteudo" class="layout">
+      <section class="notice" aria-labelledby="aviso-title">
+        <div class="notice-mark">!</div>
+        <div>
+          <h2 id="aviso-title">Bloqueio contratual preservado</h2>
+          <p>Dados sintéticos servem somente a testes. Em homologação e produção, sem modelo e dataset aprovados pelo Responsável Técnico, a ordem deve ser recusada. Este cockpit não substitui assinatura, ART/RRT, matrícula, geocodificação auditável ou integração oficial da CAIXA.</p>
+        </div>
+      </section>
+
+      <section class="card credentials" aria-labelledby="credenciais-title">
+        <div class="section-heading">
+          <div>
+            <span class="step">Passo 1</span>
+            <h2 id="credenciais-title">Conectar</h2>
+          </div>
+          <a href="/docs" target="_blank" rel="noopener">Abrir documentação da API</a>
+        </div>
+        <label for="client-key">Chave de integração</label>
+        <div class="inline-control">
+          <input id="client-key" type="password" autocomplete="off" spellcheck="false" placeholder="X-Client-API-Key">
+          <button id="test-connection" type="button" class="button secondary">Testar acesso</button>
+          <button id="clear-key" type="button" class="button quiet">Limpar</button>
+        </div>
+        <p class="hint">A chave permanece somente nesta página, em memória, e é apagada ao fechar ou recarregar.</p>
+        <div id="connection-result" class="result" aria-live="polite"></div>
+      </section>
+
+      <section class="card" aria-labelledby="nova-os-title">
+        <div class="section-heading">
+          <div>
+            <span class="step">Passo 2</span>
+            <h2 id="nova-os-title">Nova avaliação</h2>
+          </div>
+          <button id="generate-order-id" type="button" class="button quiet">Gerar número de teste</button>
+        </div>
+
+        <form id="order-form">
+          <fieldset>
+            <legend>Identificação e endereço</legend>
+            <div class="form-grid">
+              <label>Número da OS
+                <input id="external-order-id" required minlength="3" maxlength="100" placeholder="OS-2026-000001">
+              </label>
+              <label>Cidade do Anexo III
+                <select id="city" required><option value="">Carregando cidades…</option></select>
+              </label>
+              <label>Tipologia
+                <select id="property-type" required>
+                  <option value="APARTMENT">Apartamento</option>
+                  <option value="HOUSE">Casa</option>
+                  <option value="LAND">Terreno</option>
+                </select>
+              </label>
+              <label>CEP
+                <input id="postal-code" required inputmode="numeric" pattern="\d{5}-?\d{3}" placeholder="00000-000">
+              </label>
+              <label>Bairro
+                <input id="neighborhood" required minlength="2" maxlength="100">
+              </label>
+              <label class="span-2">Logradouro
+                <input id="street" required minlength="2" maxlength="150">
+              </label>
+              <label>Número
+                <input id="number" required maxlength="20">
+              </label>
+              <label>Complemento
+                <input id="complement" maxlength="100">
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Características</legend>
+            <div class="form-grid compact">
+              <label id="private-area-field">Área privativa (m²)
+                <input id="private-area" type="number" min="0.01" step="0.01">
+              </label>
+              <label id="built-area-field">Área construída (m²)
+                <input id="built-area" type="number" min="0.01" step="0.01">
+              </label>
+              <label id="land-area-field">Área do terreno (m²)
+                <input id="land-area" type="number" min="0.01" step="0.01">
+              </label>
+              <label class="residential-field">Quartos
+                <input id="bedrooms" type="number" min="0" max="20" step="1">
+              </label>
+              <label class="residential-field">Banheiros
+                <input id="bathrooms" type="number" min="0" max="20" step="1">
+              </label>
+              <label class="residential-field">Vagas
+                <input id="parking-spaces" type="number" min="0" max="20" step="1">
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Geolocalização auditável</legend>
+            <p class="field-note">Localize o endereço na base oficial CNEFE/IBGE importada ou informe coordenadas obtidas por processo aprovado. O sistema não presume a precisão: a evidência e a imprecisão máxima de 50 m devem ser confirmadas.</p>
+            <div class="geocoding-action">
+              <button id="resolve-address" type="button" class="button secondary">Localizar pelo endereço</button>
+              <span>Usa somente a base CNEFE local e registra uma trilha de auditoria.</span>
+            </div>
+            <div id="geocoding-result" class="result" role="status" aria-live="polite"></div>
+            <div class="form-grid compact">
+              <label>Latitude
+                <input id="latitude" type="number" required min="-90" max="90" step="0.000001" placeholder="-23.550520">
+              </label>
+              <label>Longitude
+                <input id="longitude" type="number" required min="-180" max="180" step="0.000001" placeholder="-46.633308">
+              </label>
+              <label>Imprecisão (m)
+                <input id="accuracy" type="number" required min="0" max="50" step="0.01" placeholder="Confirmar por evidência">
+              </label>
+              <label>Método de confirmação
+                <select id="confirmation-method" required>
+                  <option value="DOCUMENT_VALIDATION">Validação documental</option>
+                  <option value="CNEFE_IBGE">CNEFE/IBGE</option>
+                  <option value="FIELD_VERIFICATION">Verificação de campo</option>
+                </select>
+              </label>
+              <label class="span-2">Evidência da posição e da precisão
+                <input id="evidence-reference" required minlength="3" maxlength="160" placeholder="Arquivo, protocolo ou medição que comprove ≤ 50 m">
+              </label>
+              <label>Verificado por
+                <input id="verified-by" required minlength="3" maxlength="100" placeholder="Responsável ou processo">
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Conflito de interesse</legend>
+            <label class="check-label"><input id="has-conflict" type="checkbox"> Existe conflito de interesse identificado</label>
+            <div id="conflict-details" class="form-grid hidden">
+              <label>Tipo do conflito
+                <input id="conflict-type" minlength="3" maxlength="100" value="RELATED_PARTY">
+              </label>
+              <label>Identificado por
+                <input id="conflict-identified-by" minlength="3" maxlength="100" value="COMPLIANCE">
+              </label>
+              <label class="span-2">Descrição objetiva
+                <textarea id="conflict-description" minlength="3" maxlength="500"></textarea>
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="actions">
+            <button class="button primary" type="submit">Criar ordem</button>
+            <button id="reset-form" class="button secondary" type="reset">Limpar formulário</button>
+          </div>
+        </form>
+        <div id="create-result" class="result" aria-live="polite"></div>
+      </section>
+
+      <section class="card" aria-labelledby="orders-title">
+        <div class="section-heading">
+          <div>
+            <span class="step">Passo 3</span>
+            <h2 id="orders-title">Acompanhar e emitir</h2>
+          </div>
+          <button id="refresh-orders" type="button" class="button secondary">Atualizar lista</button>
+        </div>
+        <p class="hint">Use Processar para executar validação e precificação em uma operação idempotente. O prazo máximo de cinco minutos é controlado pelo servidor. Ordens recusadas exibem o motivo contratual e a evidência.</p>
+        <div id="orders-result" class="result" aria-live="polite"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>OS</th><th>Cidade</th><th>Tipologia</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody id="orders-body"><tr><td colspan="5">Conecte-se para listar as ordens.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card checklist" aria-labelledby="checklist-title">
+        <span class="step">Passo 4</span>
+        <h2 id="checklist-title">Antes de considerar concluído</h2>
+        <ul>
+          <li>Conferir OS, matrícula, endereço, áreas e tipologia.</li>
+          <li>Arquivar fonte, método, coordenadas e evidência de precisão ≤ 50 m.</li>
+          <li>Revisar PDF e CSV e registrar os respectivos SHA-256.</li>
+          <li>Submeter modelo, dataset e relatório ao Responsável Técnico.</li>
+          <li>Fazer backup, validar o backup e testar a restauração.</li>
+        </ul>
+      </section>
+    </main>
+    <footer>Cockpit AVM · interface local sem armazenamento de credenciais no navegador</footer>
+  </body>
+</html>

@@ -1,9 +1,11 @@
 from decimal import Decimal
 from uuid import uuid4
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.schemas.property_asset import PropertyAssetResponse
 
 
 client = TestClient(app)
@@ -138,3 +140,103 @@ def test_preserves_decimal_area_values() -> None:
 
     assert property_asset["private_area_m2"] == "72.55"
     assert property_asset["built_area_m2"] == "85.75"
+
+
+@pytest.mark.parametrize(
+    ("property_type", "areas", "invalid_patch", "preserved_field"),
+    [
+        (
+            "APARTMENT",
+            {
+                "private_area_m2": "72.50",
+                "built_area_m2": "85.00",
+                "land_area_m2": None,
+            },
+            {"private_area_m2": None},
+            "private_area_m2",
+        ),
+        (
+            "APARTMENT",
+            {
+                "private_area_m2": "72.50",
+                "built_area_m2": "85.00",
+                "land_area_m2": None,
+            },
+            {"land_area_m2": "300.00"},
+            "land_area_m2",
+        ),
+        (
+            "HOUSE",
+            {
+                "private_area_m2": None,
+                "built_area_m2": "120.00",
+                "land_area_m2": "300.00",
+            },
+            {"built_area_m2": None},
+            "built_area_m2",
+        ),
+        (
+            "LAND",
+            {
+                "private_area_m2": None,
+                "built_area_m2": None,
+                "land_area_m2": "500.00",
+            },
+            {"land_area_m2": None},
+            "land_area_m2",
+        ),
+    ],
+)
+def test_rejects_patch_that_would_break_complete_area_invariants(
+    property_type: str,
+    areas: dict[str, str | None],
+    invalid_patch: dict[str, str | None],
+    preserved_field: str,
+) -> None:
+    payload = valid_property_asset_payload()
+    payload.update({"property_type": property_type, **areas})
+    created = client.post("/property-assets", json=payload)
+    assert created.status_code == 201
+    property_asset_id = created.json()["property_asset_id"]
+    original_value = created.json()[preserved_field]
+
+    response = client.patch(
+        f"/property-assets/{property_asset_id}",
+        json=invalid_patch,
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "INVALID_PROPERTY_ASSET_UPDATE"
+    persisted = client.get(f"/property-assets/{property_asset_id}")
+    assert persisted.status_code == 200
+    assert persisted.json()[preserved_field] == original_value
+
+
+def test_rolls_back_patch_when_response_validation_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    created = client.post("/property-assets", json=valid_property_asset_payload())
+    assert created.status_code == 201
+    property_asset_id = created.json()["property_asset_id"]
+
+    def fail_response_validation(
+        cls: type[PropertyAssetResponse], value: object
+    ) -> None:
+        del cls, value
+        raise RuntimeError("simulated response validation failure")
+
+    with monkeypatch.context() as context:
+        context.setattr(
+            PropertyAssetResponse,
+            "model_validate",
+            classmethod(fail_response_validation),
+        )
+        with pytest.raises(RuntimeError, match="simulated response validation failure"):
+            client.patch(
+                f"/property-assets/{property_asset_id}",
+                json={"neighborhood": "Bairro que não deve persistir"},
+            )
+
+    persisted = client.get(f"/property-assets/{property_asset_id}")
+    assert persisted.status_code == 200
+    assert persisted.json()["neighborhood"] == "Centro"

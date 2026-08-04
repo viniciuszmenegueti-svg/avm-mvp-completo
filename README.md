@@ -1,8 +1,14 @@
 # AVM Imóveis API
 
-[![CI](https://github.com/viniciuszmenegueti-svg/avm/actions/workflows/ci.yml/badge.svg)](https://github.com/viniciuszmenegueti-svg/avm/actions/workflows/ci.yml)
+[![CI](https://github.com/viniciuszmenegueti-svg/avm-mvp-completo/actions/workflows/ci.yml/badge.svg)](https://github.com/viniciuszmenegueti-svg/avm-mvp-completo/actions/workflows/ci.yml)
 
 API para recebimento, validação, processamento e avaliação automatizada de imóveis por meio de Ordens de Serviço.
+
+> **Estado de liberação:** apto para testes técnicos controlados. Não homologado
+> pela CAIXA e não autorizado para produção contratual. O modo `CONTRACTUAL`
+> permanece bloqueado no código até que os marcos externos sejam comprovados.
+> Consulte a
+> [matriz de homologação](docs/MATRIZ_HOMOLOGACAO_2026.md).
 
 ## Tecnologias
 
@@ -46,15 +52,30 @@ API para recebimento, validação, processamento e avaliação automatizada de i
 - Registro e consulta das versões dos modelos AVM
 - Bloqueio da avaliação quando o modelo padrão não está ativo
 - Persistência da versão do modelo utilizada em cada avaliação
+- Registry persistente de datasets e modelos OLS candidatos para homologação sombra
+- Seleção de modelo congelado por cidade, tipologia e vigência
+- SHA-256 do dataset, matriz e artefato recalculado antes de aprovação/inferência
+- IC80 e grau de precisão recalculados para cada imóvel
+- Bloqueio de extrapolação além do domínio amostral
+- Diagnósticos F, t, PRESS/LOOCV, VIF, normalidade, heterocedasticidade e influência
+- Minuta PDF separada do Relatório do Modelo por cidade/versão
+- Bloqueio técnico de entrega para avaliações de homologação sombra
 - Transações atômicas no banco de dados
 - Healthchecks de vida e prontidão
 - Request ID por requisição
+- Importação CNEFE versionada (`LOADING`, `ACTIVE`, `FAILED`)
+- Geocodificação local CNEFE/IBGE vinculada à OS por auditoria validada no servidor
 - Logs HTTP
 - Tratamento padronizado de erros
-- Cabeçalhos básicos de segurança
+- Cabeçalhos de segurança, CSP e HSTS condicionado a HTTPS
 - Testes automatizados com cobertura mínima de 95%
 - Teste de integração com API e PostgreSQL reais
 - Pipeline de integração contínua no GitHub Actions
+
+O resolver CNEFE não atribui automaticamente a precisão contratual. A base
+oficial da cidade deve ser importada e a imprecisão de até 50 m deve ser
+confirmada por evidência e responsável identificados. Veja
+[`docs/GEOCODIFICACAO_CNEFE.md`](docs/GEOCODIFICACAO_CNEFE.md).
 
 ## Aviso sobre o modelo AVM
 
@@ -62,13 +83,23 @@ O método `RULE_BASED_V1` é uma implementação inicial e demonstrativa.
 
 Os preços-base por metro quadrado utilizados atualmente são valores demonstrativos persistidos no banco de dados para validação técnica do fluxo. Eles não devem ser considerados valores reais de mercado nem utilizados para emissão de laudos imobiliários. Por segurança, o cálculo sintético fica bloqueado por padrão (`ALLOW_SYNTHETIC_PRICING=false`); sem modelo/dataset aplicável, a ordem é recusada pelo motivo contratual `TR_9_5_A`.
 
-Uma versão futura poderá utilizar:
+O modo `HOMOLOGATION_SHADOW` permite testar o pipeline com regressão OLS
+persistida e congelada. Toda saída permanece marcada com
+`contractual_validity=false`, e os estados de entrega são bloqueados. A ativação
+contratual não é disponibilizada pelo projeto enquanto os requisitos externos e
+a aprovação dos Responsáveis Técnicos estiverem pendentes. Não existe flag local
+que transforme uma evidência interna em autorização contratual.
+
+O pipeline estatístico de homologação já utiliza regressão OLS auditável. Para
+um modelo real ainda são necessários:
 
 - Imóveis comparáveis
 - Dados históricos de transações
 - Características de localização
-- Modelos estatísticos
-- Algoritmos de aprendizado de máquina
+- plano de variáveis e segmentação aprovados pelos RTs
+- Auditoria prévia de dados públicos de mercado: consulte
+  [`docs/COLETA_DADOS_INTERNET.md`](docs/COLETA_DADOS_INTERNET.md)
+- validação espacial quando aplicável
 - Métricas de erro e validação por cidade
 
 ## Cidades habilitadas
@@ -124,20 +155,27 @@ Exemplo de configuração:
 
 ```env
 APP_NAME=AVM Imoveis API
-APP_VERSION=0.2.0
+APP_VERSION=0.3.1
 APP_ENV=development
 APP_DEBUG=false
 LOG_LEVEL=INFO
+ALLOW_SYNTHETIC_PRICING=false
+MODEL_EXECUTION_MODE=DEMONSTRATION
 
-ADMIN_CREDENTIALS_JSON={"admin-local":"change_this_admin_key","pricing-admin":"change_this_pricing_key"}
+ADMIN_CREDENTIALS_JSON={"admin-local":"replace_with_at_least_24_random_characters","pricing-admin":"replace_with_another_24_random_characters"}
 
 ADMIN_API_KEY=
 ADMIN_ACTOR=
+CLIENT_CREDENTIALS_JSON={"caixa-integration":"replace_with_at_least_24_random_characters"}
 
 POSTGRES_DB=avm
 POSTGRES_USER=avm_app
 POSTGRES_PASSWORD=avm_local_password
 POSTGRES_PORT=5433
+POSTGRES_CONTAINER_NAME=avm-postgres
+
+API_PORT=8000
+API_CONTAINER_NAME=avm-api
 
 DATABASE_URL=postgresql+psycopg://avm_app:avm_local_password@localhost:5433/avm
 ```
@@ -181,6 +219,10 @@ Para encerrar e remover os volumes:
 ```powershell
 docker compose down -v
 ```
+
+Para executar uma instância isolada de homologação, com autenticação
+obrigatória, portas próprias, regressão congelada e bloqueio contratual, consulte
+[`docs/GUIA_TESTES_HOMOLOGACAO.md`](docs/GUIA_TESTES_HOMOLOGACAO.md).
 
 ## Execução local sem Docker
 
@@ -701,3 +743,26 @@ A resposta de avaliação agora contém:
 
 Os fatores atuais são determinísticos e transparentes. Os valores-base continuam
 demonstrativos e não substituem dados reais de mercado ou laudo técnico.
+
+## Cockpit local e massa adversa do Anexo III
+
+Com a API em execução, a interface operacional simplificada está disponível em:
+
+```text
+http://localhost:8000/cockpit
+```
+
+Ela permite conectar com a chave cliente, criar uma OS, preencher a
+geolocalização auditável, acompanhar status, processar e baixar PDF/CSV. A chave
+fica somente na memória da página e não é persistida pelo navegador.
+
+A massa sintética ampliada contém 720 cenários, cobrindo as dez localidades do
+Anexo III, apartamentos, casas e terrenos. Ela é exclusiva para testes e nunca
+pode ser usada como dado de mercado ou para ajuste de modelo:
+
+```powershell
+python scripts/generate-order-test-dataset.py
+```
+
+Consulte `docs/MASSA_TESTES_ANEXO_III.md` para a matriz de cenários, controles e
+limitações de homologação.
