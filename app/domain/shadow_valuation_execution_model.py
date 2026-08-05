@@ -1,4 +1,4 @@
-"""Persist?ncia audit?vel das execu??es do modelo AVM sombra."""
+"""Persistência auditável das execuções do modelo AVM sombra."""
 
 from datetime import datetime
 from decimal import Decimal
@@ -7,6 +7,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -20,6 +21,33 @@ from app.infrastructure.database import Base
 
 class ShadowValuationExecutionModel(Base):
     __tablename__ = "shadow_valuation_executions"
+
+    __table_args__ = (
+        Index(
+            "ix_shadow_executions_executed_at",
+            "executed_at",
+        ),
+        Index(
+            "ix_shadow_executions_status_executed_at",
+            "result_status",
+            "executed_at",
+        ),
+        Index(
+            "ix_shadow_executions_requested_by_executed_at",
+            "requested_by",
+            "executed_at",
+        ),
+        Index(
+            "ix_shadow_executions_model_version_executed_at",
+            "model_version",
+            "executed_at",
+        ),
+        Index(
+            "ix_shadow_executions_order_executed_at",
+            "internal_order_id",
+            "executed_at",
+        ),
+    )
 
     execution_id: Mapped[str] = mapped_column(
         String(36),
