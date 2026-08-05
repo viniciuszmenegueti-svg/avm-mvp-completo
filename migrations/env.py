@@ -14,6 +14,10 @@ from app.domain.cnefe_address_model import CnefeAddressModel
 from app.domain.cnefe_import_model import CnefeImportModel
 from app.domain.data_source_model import DataSourceModel
 from app.domain.dataset_model import DatasetModel
+from app.domain.dataset_import_staging_model import (
+    DatasetImportExecutionModel,
+    DatasetImportRowModel,
+)
 from app.domain.dataset_version_model import DatasetVersionModel
 from app.domain.geocoding_audit_model import GeocodingAuditModel
 from app.domain.order_model import OrderModel
@@ -54,6 +58,8 @@ MODEL_CLASSES = (
     DataSourceModel,
     DatasetModel,
     DatasetVersionModel,
+    DatasetImportExecutionModel,
+    DatasetImportRowModel,
     StatisticalDatasetModel,
     StatisticalModelVersionModel,
     OrderModel,

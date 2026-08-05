@@ -6,6 +6,21 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 
 from app.core.admin_auth import require_admin_api_key
 from app.infrastructure.dependencies import DatabaseSession
+from app.schemas.dataset_import_staging import (
+    DatasetImportRejectedRowsListResponse,
+    DatasetImportRowStatus,
+    DatasetImportStagingRequest,
+    DatasetImportStagingSummaryResponse,
+)
+from app.services.dataset_import_staging_service import (
+    DatasetImportStagingConflictError,
+    DatasetImportStagingError,
+    DatasetImportStagingNotFoundError,
+    DatasetImportStagingValidationError,
+    get_dataset_version_staging_summary,
+    list_dataset_version_rejected_rows,
+    stage_dataset_version_file,
+)
 from app.schemas.dataset_file_import import (
     DatasetFileImportResultResponse,
     DatasetFileUploadResponse,
@@ -111,6 +126,25 @@ def _raise_file_import_error(error: DatasetFileImportError) -> None:
     else:
         status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
         code = "DATASET_FILE_IMPORT_INVALID"
+    raise HTTPException(
+        status_code=status_code,
+        detail={"code": code, "message": str(error)},
+    ) from error
+
+
+def _raise_staging_error(error: DatasetImportStagingError) -> None:
+    if isinstance(error, DatasetImportStagingNotFoundError):
+        status_code = status.HTTP_404_NOT_FOUND
+        code = "DATASET_IMPORT_STAGING_NOT_FOUND"
+    elif isinstance(error, DatasetImportStagingConflictError):
+        status_code = status.HTTP_409_CONFLICT
+        code = "DATASET_IMPORT_STAGING_CONFLICT"
+    elif isinstance(error, DatasetImportStagingValidationError):
+        status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
+        code = "DATASET_IMPORT_STAGING_INVALID"
+    else:
+        status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
+        code = "DATASET_IMPORT_STAGING_ERROR"
     raise HTTPException(
         status_code=status_code,
         detail={"code": code, "message": str(error)},
@@ -288,4 +322,71 @@ def get_registered_dataset_version_import_result(
         )
     except DatasetFileImportError as error:
         _raise_file_import_error(error)
+        raise AssertionError("unreachable")
+
+
+@router.post(
+    "/{dataset_version_id}/stage-import",
+    response_model=DatasetImportStagingSummaryResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def stage_registered_dataset_version_file(
+    dataset_version_id: UUID,
+    payload: DatasetImportStagingRequest,
+    session: DatabaseSession,
+    actor: AdminActor,
+) -> DatasetImportStagingSummaryResponse:
+    try:
+        return stage_dataset_version_file(
+            session,
+            dataset_version_id=str(dataset_version_id),
+            payload=payload,
+            actor=actor,
+        )
+    except DatasetImportStagingError as error:
+        _raise_staging_error(error)
+        raise AssertionError("unreachable")
+
+
+@router.get(
+    "/{dataset_version_id}/staging-summary",
+    response_model=DatasetImportStagingSummaryResponse,
+)
+def get_registered_dataset_version_staging_summary(
+    dataset_version_id: UUID,
+    session: DatabaseSession,
+    _: AdminActor,
+) -> DatasetImportStagingSummaryResponse:
+    try:
+        return get_dataset_version_staging_summary(
+            session,
+            dataset_version_id=str(dataset_version_id),
+        )
+    except DatasetImportStagingError as error:
+        _raise_staging_error(error)
+        raise AssertionError("unreachable")
+
+
+@router.get(
+    "/{dataset_version_id}/rejected-rows",
+    response_model=DatasetImportRejectedRowsListResponse,
+)
+def list_registered_dataset_version_rejected_rows(
+    dataset_version_id: UUID,
+    session: DatabaseSession,
+    _: AdminActor,
+    row_status: DatasetImportRowStatus | None = Query(default=None, alias="status"),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> DatasetImportRejectedRowsListResponse:
+    try:
+        return list_dataset_version_rejected_rows(
+            session,
+            dataset_version_id=str(dataset_version_id),
+            status=row_status,
+            limit=limit,
+            offset=offset,
+        )
+    except DatasetImportStagingError as error:
+        _raise_staging_error(error)
         raise AssertionError("unreachable")
