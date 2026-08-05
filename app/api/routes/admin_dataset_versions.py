@@ -2,10 +2,27 @@ from datetime import date
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 
 from app.core.admin_auth import require_admin_api_key
 from app.infrastructure.dependencies import DatabaseSession
+from app.schemas.dataset_file_import import (
+    DatasetFileImportResultResponse,
+    DatasetFileUploadResponse,
+)
+from app.services.dataset_file_import_service import (
+    DatasetFileAlreadyUploadedError,
+    DatasetFileChecksumMismatchError,
+    DatasetFileImportError,
+    DatasetFileNotFoundError,
+    DatasetFileProcessingError,
+    DatasetFileSizeMismatchError,
+    DatasetFileStatusConflictError,
+    DatasetFileValidationError,
+    get_dataset_version_import_result,
+    process_dataset_version_file,
+    upload_dataset_version_file,
+)
 from app.schemas.dataset_version import (
     DatasetVersionCompleteRequest,
     DatasetVersionCreateRequest,
@@ -66,6 +83,37 @@ def _raise_registry_error(error: DatasetVersionRegistryError) -> None:
     raise HTTPException(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         detail={"code": "DATASET_VERSION_INVALID", "message": str(error)},
+    ) from error
+
+
+def _raise_file_import_error(error: DatasetFileImportError) -> None:
+    if isinstance(error, DatasetFileNotFoundError):
+        status_code = status.HTTP_404_NOT_FOUND
+        code = "DATASET_FILE_VERSION_NOT_FOUND"
+    elif isinstance(
+        error,
+        (DatasetFileStatusConflictError, DatasetFileAlreadyUploadedError),
+    ):
+        status_code = status.HTTP_409_CONFLICT
+        code = "DATASET_FILE_STATUS_CONFLICT"
+    elif isinstance(error, DatasetFileChecksumMismatchError):
+        status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
+        code = "DATASET_FILE_CHECKSUM_MISMATCH"
+    elif isinstance(error, DatasetFileSizeMismatchError):
+        status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
+        code = "DATASET_FILE_SIZE_MISMATCH"
+    elif isinstance(error, DatasetFileProcessingError):
+        status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
+        code = "DATASET_FILE_PROCESSING_FAILED"
+    elif isinstance(error, DatasetFileValidationError):
+        status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
+        code = "DATASET_FILE_INVALID"
+    else:
+        status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
+        code = "DATASET_FILE_IMPORT_INVALID"
+    raise HTTPException(
+        status_code=status_code,
+        detail={"code": code, "message": str(error)},
     ) from error
 
 
@@ -178,4 +226,66 @@ def fail_registered_dataset_version_processing(
         )
     except DatasetVersionRegistryError as error:
         _raise_registry_error(error)
+        raise AssertionError("unreachable")
+
+
+@router.post(
+    "/{dataset_version_id}/file",
+    response_model=DatasetFileUploadResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_registered_dataset_version_file(
+    dataset_version_id: UUID,
+    session: DatabaseSession,
+    actor: AdminActor,
+    file: UploadFile = File(...),
+) -> DatasetFileUploadResponse:
+    try:
+        return await upload_dataset_version_file(
+            session,
+            dataset_version_id=str(dataset_version_id),
+            upload=file,
+            actor=actor,
+        )
+    except DatasetFileImportError as error:
+        _raise_file_import_error(error)
+        raise AssertionError("unreachable")
+
+
+@router.post(
+    "/{dataset_version_id}/process-file",
+    response_model=DatasetFileImportResultResponse,
+)
+def process_registered_dataset_version_file(
+    dataset_version_id: UUID,
+    session: DatabaseSession,
+    actor: AdminActor,
+) -> DatasetFileImportResultResponse:
+    try:
+        return process_dataset_version_file(
+            session,
+            dataset_version_id=str(dataset_version_id),
+            actor=actor,
+        )
+    except DatasetFileImportError as error:
+        _raise_file_import_error(error)
+        raise AssertionError("unreachable")
+
+
+@router.get(
+    "/{dataset_version_id}/import-result",
+    response_model=DatasetFileImportResultResponse,
+)
+def get_registered_dataset_version_import_result(
+    dataset_version_id: UUID,
+    session: DatabaseSession,
+    _: AdminActor,
+) -> DatasetFileImportResultResponse:
+    try:
+        return get_dataset_version_import_result(
+            session,
+            dataset_version_id=str(dataset_version_id),
+        )
+    except DatasetFileImportError as error:
+        _raise_file_import_error(error)
         raise AssertionError("unreachable")
