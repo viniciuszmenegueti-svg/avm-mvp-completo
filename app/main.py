@@ -7,6 +7,7 @@ from starlette.types import ExceptionHandler
 
 from app.api.routes.admin_data_sources import router as admin_data_sources_router
 from app.api.routes.admin_datasets import router as admin_datasets_router
+from app.api.routes.admin_dataset_versions import router as admin_dataset_versions_router
 from app.api.routes.admin_diagnostics import router as admin_diagnostics_router
 from app.api.routes.admin_shadow_valuations import (
     router as admin_shadow_valuations_router,
@@ -93,6 +94,7 @@ app.include_router(health_router)
 app.include_router(admin_diagnostics_router)
 app.include_router(admin_data_sources_router)
 app.include_router(admin_datasets_router)
+app.include_router(admin_dataset_versions_router)
 app.include_router(admin_shadow_valuations_router)
 app.include_router(geocoding_router)
 app.include_router(orders_router)
