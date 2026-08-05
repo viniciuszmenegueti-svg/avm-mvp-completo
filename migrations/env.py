@@ -13,6 +13,7 @@ from app.domain.city_valuation_price_model import (
 from app.domain.cnefe_address_model import CnefeAddressModel
 from app.domain.cnefe_import_model import CnefeImportModel
 from app.domain.data_source_model import DataSourceModel
+from app.domain.dataset_model import DatasetModel
 from app.domain.geocoding_audit_model import GeocodingAuditModel
 from app.domain.order_model import OrderModel
 from app.domain.shadow_valuation_execution_model import (
@@ -50,6 +51,7 @@ MODEL_CLASSES = (
     CnefeImportModel,
     GeocodingAuditModel,
     DataSourceModel,
+    DatasetModel,
     StatisticalDatasetModel,
     StatisticalModelVersionModel,
     OrderModel,

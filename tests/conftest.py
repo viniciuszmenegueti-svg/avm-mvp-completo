@@ -33,6 +33,7 @@ from app.domain.city_valuation_price_model import (
 from app.domain.cnefe_address_model import CnefeAddressModel
 from app.domain.cnefe_import_model import CnefeImportModel
 from app.domain.data_source_model import DataSourceModel
+from app.domain.dataset_model import DatasetModel
 from app.domain.geocoding_audit_model import GeocodingAuditModel
 from app.domain.order_model import OrderModel
 from app.domain.order_refusal_model import OrderRefusalModel
@@ -143,6 +144,7 @@ Base.metadata.create_all(bind=engine)
 @pytest.fixture(autouse=True)
 def prepare_test_database() -> Generator[None, None, None]:
     with SessionLocal() as session:
+        session.execute(delete(DatasetModel))
         session.execute(delete(DataSourceModel))
         session.execute(delete(GeocodingAuditModel))
         session.execute(delete(CnefeAddressModel))
@@ -174,6 +176,7 @@ def prepare_test_database() -> Generator[None, None, None]:
     yield
 
     with SessionLocal() as session:
+        session.execute(delete(DatasetModel))
         session.execute(delete(DataSourceModel))
         session.execute(delete(GeocodingAuditModel))
         session.execute(delete(CnefeAddressModel))
