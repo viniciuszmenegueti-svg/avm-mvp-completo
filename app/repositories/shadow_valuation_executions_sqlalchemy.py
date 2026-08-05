@@ -205,3 +205,132 @@ def search_shadow_valuation_executions(
 
     return executions, total
 
+
+def summarize_shadow_valuation_executions(
+    session: Session,
+    *,
+    executed_from: datetime | None = None,
+    executed_until: datetime | None = None,
+) -> dict[str, object]:
+    """Resume operacionalmente as execu??es do modelo sombra."""
+
+    filters = []
+
+    if executed_from is not None:
+        filters.append(
+            ShadowValuationExecutionModel.executed_at
+            >= executed_from
+        )
+
+    if executed_until is not None:
+        filters.append(
+            ShadowValuationExecutionModel.executed_at
+            <= executed_until
+        )
+
+    total = int(
+        session.scalar(
+            select(
+                func.count(
+                    ShadowValuationExecutionModel.execution_id
+                )
+            ).where(*filters)
+        )
+        or 0
+    )
+
+    success = int(
+        session.scalar(
+            select(
+                func.count(
+                    ShadowValuationExecutionModel.execution_id
+                )
+            ).where(
+                *filters,
+                ShadowValuationExecutionModel.result_status
+                == "SUCCESS",
+            )
+        )
+        or 0
+    )
+
+    not_applicable = int(
+        session.scalar(
+            select(
+                func.count(
+                    ShadowValuationExecutionModel.execution_id
+                )
+            ).where(
+                *filters,
+                ShadowValuationExecutionModel.result_status
+                == "NOT_APPLICABLE",
+            )
+        )
+        or 0
+    )
+
+    distinct_orders = int(
+        session.scalar(
+            select(
+                func.count(
+                    func.distinct(
+                        ShadowValuationExecutionModel.internal_order_id
+                    )
+                )
+            ).where(*filters)
+        )
+        or 0
+    )
+
+    latest_execution_at = session.scalar(
+        select(
+            func.max(
+                ShadowValuationExecutionModel.executed_at
+            )
+        ).where(*filters)
+    )
+
+    version_statement = (
+        select(
+            ShadowValuationExecutionModel.model_version,
+            func.count(
+                ShadowValuationExecutionModel.execution_id
+            ),
+        )
+        .where(*filters)
+        .group_by(
+            ShadowValuationExecutionModel.model_version
+        )
+        .order_by(
+            func.count(
+                ShadowValuationExecutionModel.execution_id
+            ).desc(),
+            ShadowValuationExecutionModel.model_version.asc(),
+        )
+    )
+
+    by_model_version = [
+        {
+            "model_version": model_version,
+            "total": int(version_total),
+        }
+        for model_version, version_total
+        in session.execute(version_statement).all()
+    ]
+
+    success_rate_percent = (
+        round((success / total) * 100, 2)
+        if total > 0
+        else 0
+    )
+
+    return {
+        "total": total,
+        "success": success,
+        "not_applicable": not_applicable,
+        "success_rate_percent": success_rate_percent,
+        "distinct_orders": distinct_orders,
+        "latest_execution_at": latest_execution_at,
+        "by_model_version": by_model_version,
+    }
+

@@ -64,3 +64,23 @@ class ShadowValuationExecutionSearchResponse(BaseModel):
     offset: int = Field(ge=0)
     items: list[ShadowValuationExecutionResponse]
 
+
+class ShadowValuationExecutionModelVersionSummary(BaseModel):
+    model_version: str | None
+    total: int = Field(ge=0)
+
+
+class ShadowValuationExecutionSummaryResponse(BaseModel):
+    total: int = Field(ge=0)
+    success: int = Field(ge=0)
+    not_applicable: int = Field(ge=0)
+    success_rate_percent: Decimal = Field(
+        ge=0,
+        le=100,
+    )
+    distinct_orders: int = Field(ge=0)
+    latest_execution_at: datetime | None
+    by_model_version: list[
+        ShadowValuationExecutionModelVersionSummary
+    ]
+
