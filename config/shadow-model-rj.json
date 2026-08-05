@@ -1,0 +1,38 @@
+﻿{
+    "configuration_classification":  "SHADOW_MODEL_POINTER",
+    "enabled":  true,
+    "model_name":  "RJ_FIXED_SPLIT_V3",
+    "model_version":  "3",
+    "operating_mode":  "SHADOW",
+    "formal_homologation":  false,
+    "city_ibge_code":  "3304557",
+    "property_type":  "APARTMENT",
+    "supported_neighborhoods":  [
+                                    "Botafogo",
+                                    "Copacabana"
+                                ],
+    "value_basis":  "ASKING_PRICE_RESEARCH_ONLY",
+    "artifact_path":  "C:\\Users\\Vinicius\\Documents\\Backup\\avm-mvp-completo-revisado\\.audit\\snapshots\\rj-shadow-model-final\\model-artifact-v3.json",
+    "decision_path":  "C:\\Users\\Vinicius\\Documents\\Backup\\avm-mvp-completo-revisado\\.audit\\snapshots\\rj-shadow-model-final\\FINAL-MODEL-DECISION.json",
+    "expected_test_sha256":  "67f82b7b3bd767869d777eaacf2f79cda354e960a7b3a9e2026efe2bdfd92d9b",
+    "input_domain":  {
+                         "private_area_m2":  {
+                                                 "minimum":  20,
+                                                 "maximum":  400
+                                             },
+                         "bedrooms":  {
+                                          "minimum":  0,
+                                          "maximum":  6
+                                      },
+                         "bathrooms":  {
+                                           "minimum":  1,
+                                           "maximum":  6
+                                       },
+                         "parking_spaces":  {
+                                                "minimum":  0,
+                                                "maximum":  4
+                                            }
+                     },
+    "activated_at":  "2026-08-05T10:17:50.9164735-03:00",
+    "updated_at":  "2026-08-05T10:29:41.0722390-03:00"
+}

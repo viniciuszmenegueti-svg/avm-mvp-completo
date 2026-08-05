@@ -24,12 +24,19 @@ from app.repositories.valuations_sqlalchemy import (
 from app.schemas.order import OrderStatus
 from app.schemas.order_processing import OrderProcessResponse
 from app.schemas.valuation import ValuationResponse
+from app.schemas.shadow_valuation import (
+    ShadowValuationPreviewResponse,
+)
 from app.services.order_processing_service import (
     OrderProcessingStateError,
     process_order,
 )
 from app.services.valuation_service import (
     calculate_and_store_valuation,
+)
+from app.services.shadow_valuation_service import (
+    ShadowValuationServiceError,
+    calculate_shadow_valuation,
 )
 from app.services.report_service import build_valuation_csv, build_valuation_pdf
 from engine.exceptions import ValuationCalculationError
@@ -317,3 +324,72 @@ def export_order_valuation_pdf(
             "X-Contractual-Validity": str(valuation.contractual_validity).lower(),
         },
     )
+
+
+@router.get(
+    "/{internal_order_id}/shadow-valuation-preview",
+    response_model=ShadowValuationPreviewResponse,
+    summary="Executa prévia não persistida do modelo sombra",
+    responses={
+        404: {"description": "Ordem não encontrada"},
+        422: {"description": "Imóvel fora do domínio do modelo sombra"},
+    },
+)
+def preview_order_shadow_valuation(
+    internal_order_id: UUID,
+    session: DatabaseSession,
+) -> ShadowValuationPreviewResponse:
+    """Executa o modelo sombra sem persistir ou alterar a avaliação oficial."""
+
+    order_id = str(internal_order_id)
+
+    order = get_order_by_internal_id(
+        session=session,
+        internal_order_id=order_id,
+    )
+
+    if order is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "ORDER_NOT_FOUND",
+                "message": "Ordem de Serviço não encontrada.",
+                "internal_order_id": order_id,
+            },
+        )
+
+    try:
+        result = calculate_shadow_valuation(
+            order.property
+        )
+    except ShadowValuationServiceError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={
+                "code": "SHADOW_VALUATION_NOT_APPLICABLE",
+                "message": str(error),
+                "internal_order_id": order_id,
+            },
+        ) from error
+
+    prediction = result.prediction
+
+    return ShadowValuationPreviewResponse(
+        internal_order_id=order_id,
+        model_name=prediction.model_name,
+        model_version=prediction.model_version,
+        execution_mode=prediction.execution_mode,
+        contractual_validity=False,
+        formal_homologation=False,
+        value_basis=prediction.value_basis,
+        estimated_value_brl=prediction.estimated_value_brl,
+        confidence_lower_brl=prediction.confidence_lower_brl,
+        confidence_upper_brl=prediction.confidence_upper_brl,
+        confidence_level=prediction.confidence_level,
+        confidence_amplitude_percent=(
+            prediction.confidence_amplitude_percent
+        ),
+        price_per_m2_brl=prediction.price_per_m2_brl,
+        artifact_sha256=prediction.artifact_sha256,
+    )
+
