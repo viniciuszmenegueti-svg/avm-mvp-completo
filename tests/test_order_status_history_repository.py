@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
+from app.domain.order_status_history_model import OrderStatusHistoryModel
 from app.infrastructure.database import SessionLocal
 from app.repositories.order_status_history_sqlalchemy import (
     create_order_status_history,
@@ -114,3 +115,45 @@ def test_returns_empty_history_for_unknown_order() -> None:
         )
 
     assert history == []
+
+
+def test_persists_complete_audit_metadata_and_structured_context() -> None:
+    internal_order_id = str(uuid4())
+    order = OrderCreate.model_validate(order_payload("HISTORY-AUDIT-001"))
+
+    with SessionLocal() as session:
+        create_order(
+            session=session,
+            order=order,
+            internal_order_id=internal_order_id,
+            received_at=datetime.now(timezone.utc),
+        )
+        history = create_order_status_history(
+            session=session,
+            internal_order_id=internal_order_id,
+            previous_status=OrderStatus.RECEIVED,
+            new_status=OrderStatus.VALIDATING_INPUT,
+            changed_by="client:caixa-integration",
+            request_id="TRACE-HISTORY-AUDIT-001",
+            reason_code="INPUT_VALIDATION_STARTED",
+            context={"attempt": 1, "source": "API"},
+        )
+
+    assert history.changed_by == "client:caixa-integration"
+    assert history.request_id == "TRACE-HISTORY-AUDIT-001"
+    assert history.reason_code == "INPUT_VALIDATION_STARTED"
+    assert history.context == {"attempt": 1, "source": "API"}
+
+
+def test_context_property_fails_closed_for_non_object_json() -> None:
+    history = OrderStatusHistoryModel(
+        internal_order_id="00000000-0000-0000-0000-000000000001",
+        previous_status="RECEIVED",
+        new_status="VALIDATING_INPUT",
+        changed_by="system",
+        request_id="internal",
+        reason_code="STATUS_TRANSITION",
+        context_json='["unexpected"]',
+    )
+
+    assert history.context == {}

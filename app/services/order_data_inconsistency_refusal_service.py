@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 
+from app.repositories.orders_sqlalchemy import get_order_by_internal_id
 from app.schemas.order import OrderCreate, OrderResponse, OrderStatus
 from app.schemas.order_refusal import OrderRefusalCreate, OrderRefusalReason
 from app.services.order_refusal_service import refuse_order_with_evidence
@@ -12,6 +13,8 @@ def refuse_order_for_city_data_mismatch(
     order: OrderCreate,
     expected_city: str,
     expected_state: str,
+    changed_by: str = "system",
+    request_id: str | None = None,
     commit: bool = True,
 ) -> OrderResponse | None:
     try:
@@ -19,6 +22,10 @@ def refuse_order_for_city_data_mismatch(
             session=session,
             internal_order_id=internal_order_id,
             new_status=OrderStatus.VALIDATING_INPUT,
+            changed_by=changed_by,
+            request_id=request_id,
+            reason_code="INPUT_VALIDATION_STARTED",
+            context={"source": "city_registry_validation"},
             commit=False,
         )
 
@@ -60,6 +67,8 @@ def refuse_order_for_city_data_mismatch(
             session=session,
             internal_order_id=internal_order_id,
             refusal=refusal,
+            changed_by=changed_by,
+            request_id=request_id,
             commit=False,
         )
 
@@ -68,18 +77,12 @@ def refuse_order_for_city_data_mismatch(
                 session.rollback()
             return None
 
-        refused_order = validating_order.model_copy(
-            update={
-                "status": OrderStatus.REFUSED,
-            }
-        )
-
         if commit:
             session.commit()
         else:
             session.flush()
 
-        return refused_order
+        return get_order_by_internal_id(session, internal_order_id)
 
     except Exception:
         if commit:

@@ -20,6 +20,7 @@ from app.schemas.order import (
     OrderStatus,
 )
 from app.services.order_status_update import (
+    resolve_audit_request_id,
     update_order_status_with_history,
 )
 
@@ -205,3 +206,58 @@ def test_rolls_back_when_history_creation_raises_transition_error() -> None:
     assert stored_order is not None
     assert stored_order.status == OrderStatus.RECEIVED
     assert history == []
+
+
+def test_rolls_back_when_history_creation_raises_unexpected_error() -> None:
+    internal_order_id = create_test_order("STATUS-SERVICE-005")
+
+    with SessionLocal() as session:
+        with (
+            patch(
+                "app.services.order_status_update.create_order_status_history",
+                side_effect=RuntimeError("audit storage unavailable"),
+            ),
+            patch.object(
+                session,
+                "rollback",
+                wraps=session.rollback,
+            ) as rollback_mock,
+            pytest.raises(RuntimeError, match="audit storage unavailable"),
+        ):
+            update_order_status_with_history(
+                session=session,
+                internal_order_id=internal_order_id,
+                new_status=OrderStatus.VALIDATING_INPUT,
+            )
+
+    rollback_mock.assert_called_once()
+
+    with SessionLocal() as session:
+        stored_order = get_order_by_internal_id(
+            session=session,
+            internal_order_id=internal_order_id,
+        )
+        history = list_order_status_history(
+            session=session,
+            internal_order_id=internal_order_id,
+        )
+
+    assert stored_order is not None
+    assert stored_order.status == OrderStatus.RECEIVED
+    assert history == []
+
+
+def test_resolves_request_id_from_argument_context_and_safe_fallback() -> None:
+    from app.core.request_id import request_id_context
+
+    long_request_id = "T" * 140
+    assert resolve_audit_request_id(long_request_id) == "T" * 128
+    assert resolve_audit_request_id("TRACE-EXPLICIT-001") == "TRACE-EXPLICIT-001"
+
+    token = request_id_context.set("TRACE-CONTEXT-001")
+    try:
+        assert resolve_audit_request_id(None) == "TRACE-CONTEXT-001"
+    finally:
+        request_id_context.reset(token)
+
+    assert resolve_audit_request_id(None) == "internal"

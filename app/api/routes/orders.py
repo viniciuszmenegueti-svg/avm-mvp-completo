@@ -1,13 +1,18 @@
 from datetime import datetime, timezone
+from typing import Annotated
 from uuid import UUID, uuid4
 
 from fastapi import (
     APIRouter,
+    Depends,
     HTTPException,
     Query,
+    Request,
     status,
 )
 
+from app.core.client_auth import require_client_api_key
+from app.core.config import APP_ENV, MODEL_EXECUTION_MODE
 from app.domain.exceptions import (
     CityDataMismatchError,
     InvalidOrderStatusTransitionError,
@@ -45,12 +50,54 @@ from app.services.order_status_update import (
     update_order_status_with_history,
 )
 from app.services.order_validation import validate_order_city
+from app.services.geocoding_service import (
+    GeocodingAuditIntegrityError,
+    validate_cnefe_audit_for_order,
+)
 
 
 router = APIRouter(
     prefix="/orders",
+    dependencies=[Depends(require_client_api_key)],
     tags=["Ordens de Serviço"],
 )
+
+ClientActor = Annotated[str, Depends(require_client_api_key)]
+
+
+SECURE_ENVIRONMENTS = frozenset({"homologation", "staging", "production", "prod"})
+
+
+def _validate_cnefe_audit_or_raise(
+    session: DatabaseSession,
+    order: OrderCreate,
+    client_actor: str,
+) -> None:
+    try:
+        validate_cnefe_audit_for_order(
+            session,
+            order=order,
+            requested_by=client_actor,
+        )
+    except GeocodingAuditIntegrityError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={
+                "code": error.code,
+                "message": str(error),
+            },
+        ) from error
+
+
+def _requires_auditable_contract_location() -> bool:
+    return APP_ENV.strip().lower() in SECURE_ENVIRONMENTS
+
+
+def _location_is_acceptable(order: OrderCreate) -> bool:
+    declaration = order.location_confirmation
+    if _requires_auditable_contract_location():
+        return declaration.has_auditable_contract_coordinates
+    return declaration.meets_contract_accuracy
 
 
 @router.post(
@@ -62,7 +109,10 @@ router = APIRouter(
 def create_order(
     order: OrderCreate,
     session: DatabaseSession,
+    request: Request,
+    client_actor: ClientActor,
 ) -> OrderResponse:
+    request_id = str(request.state.request_id)
     existing_order = get_order_by_external_id(
         session=session,
         external_order_id=order.external_order_id,
@@ -81,6 +131,8 @@ def create_order(
             },
         )
 
+    _validate_cnefe_audit_or_raise(session, order, client_actor)
+
     if order.conflict_of_interest.has_conflict:
         internal_order_id = str(uuid4())
 
@@ -97,6 +149,8 @@ def create_order(
                 session=session,
                 internal_order_id=internal_order_id,
                 order=order,
+                changed_by=client_actor,
+                request_id=request_id,
                 commit=False,
             )
 
@@ -123,7 +177,8 @@ def create_order(
             session.rollback()
             raise
 
-    if not order.location_confirmation.is_confirmed:
+    require_auditable_location = _requires_auditable_contract_location()
+    if not _location_is_acceptable(order):
         internal_order_id = str(uuid4())
 
         try:
@@ -140,6 +195,9 @@ def create_order(
                 internal_order_id=internal_order_id,
                 order=order,
                 commit=False,
+                require_auditable=require_auditable_location,
+                changed_by=client_actor,
+                request_id=request_id,
             )
 
             if refused_order is None:
@@ -197,6 +255,8 @@ def create_order(
                 order=order,
                 expected_city=error.expected_city,
                 expected_state=error.expected_state,
+                changed_by=client_actor,
+                request_id=request_id,
                 commit=False,
             )
 
@@ -278,8 +338,26 @@ def update_order_status(
     internal_order_id: UUID,
     status_update: OrderStatusUpdate,
     session: DatabaseSession,
+    request: Request,
+    client_actor: ClientActor,
 ) -> OrderResponse:
     order_id = str(internal_order_id)
+
+    if MODEL_EXECUTION_MODE == "HOMOLOGATION_SHADOW" and status_update.status in {
+        OrderStatus.DELIVERING,
+        OrderStatus.DELIVERED,
+    }:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "SHADOW_DELIVERY_BLOCKED",
+                "message": (
+                    "Resultados de homologação sombra não podem entrar no fluxo "
+                    "de entrega contratual."
+                ),
+                "execution_mode": MODEL_EXECUTION_MODE,
+            },
+        )
 
     if status_update.status == OrderStatus.REFUSED:
         raise HTTPException(
@@ -299,6 +377,10 @@ def update_order_status(
             session=session,
             internal_order_id=order_id,
             new_status=status_update.status,
+            changed_by=client_actor,
+            request_id=str(request.state.request_id),
+            reason_code="CLIENT_STATUS_UPDATE",
+            context={"endpoint": f"/orders/{order_id}/status"},
         )
     except InvalidOrderStatusTransitionError as error:
         raise HTTPException(
@@ -385,8 +467,10 @@ def get_order(
     summary="Cria uma ordem a partir de um imóvel cadastrado",
 )
 def create_order_from_property_asset(
-    request: OrderFromPropertyAssetCreate,
+    creation: OrderFromPropertyAssetCreate,
     session: DatabaseSession,
+    request: Request,
+    client_actor: ClientActor,
 ) -> OrderResponse:
     from app.repositories.cities_sqlalchemy import (
         get_active_city_by_ibge_code,
@@ -398,7 +482,7 @@ def create_order_from_property_asset(
 
     existing_order = get_order_by_external_id(
         session=session,
-        external_order_id=request.external_order_id,
+        external_order_id=creation.external_order_id,
     )
 
     if existing_order is not None:
@@ -409,14 +493,14 @@ def create_order_from_property_asset(
                 "message": (
                     "Já existe uma Ordem de Serviço com este external_order_id."
                 ),
-                "external_order_id": request.external_order_id,
+                "external_order_id": creation.external_order_id,
                 "internal_order_id": existing_order.internal_order_id,
             },
         )
 
     asset = get_property_asset_by_id(
         session=session,
-        property_asset_id=request.property_asset_id,
+        property_asset_id=creation.property_asset_id,
     )
 
     if asset is None:
@@ -425,7 +509,7 @@ def create_order_from_property_asset(
             detail={
                 "code": "PROPERTY_ASSET_NOT_FOUND",
                 "message": "Imóvel não encontrado.",
-                "property_asset_id": request.property_asset_id,
+                "property_asset_id": creation.property_asset_id,
             },
         )
 
@@ -467,9 +551,21 @@ def create_order_from_property_asset(
     )
 
     order = OrderCreate(
-        external_order_id=request.external_order_id,
+        external_order_id=creation.external_order_id,
         property=property_input,
+        conflict_of_interest=creation.conflict_of_interest,
+        location_confirmation=creation.location_confirmation,
     )
+
+    _validate_cnefe_audit_or_raise(session, order, client_actor)
+
+    if order.conflict_of_interest.has_conflict or not _location_is_acceptable(order):
+        return create_order(
+            order=order,
+            session=session,
+            request=request,
+            client_actor=client_actor,
+        )
 
     return create_order_in_database(
         session=session,

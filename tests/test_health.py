@@ -21,7 +21,9 @@ def test_health_endpoint() -> None:
         "name": "AVM Imóveis API",
         "version": "0.3.1",
         "environment": "test",
+        "execution_mode": "DEMONSTRATION",
         "database": "ok",
+        "database_revision": "not_enforced_in_local_or_test",
     }
 
 
@@ -35,6 +37,7 @@ def test_liveness_endpoint() -> None:
         "name": "AVM Imóveis API",
         "version": "0.3.1",
         "environment": "test",
+        "execution_mode": "DEMONSTRATION",
     }
 
 
@@ -48,7 +51,9 @@ def test_readiness_endpoint() -> None:
         "name": "AVM Imóveis API",
         "version": "0.3.1",
         "environment": "test",
+        "execution_mode": "DEMONSTRATION",
         "database": "ok",
+        "database_revision": "not_enforced_in_local_or_test",
     }
 
 

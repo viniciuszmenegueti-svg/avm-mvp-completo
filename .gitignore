@@ -19,6 +19,7 @@ htmlcov/
 .env
 .env.*
 !.env.example
+!.env.*.example
 *.pem
 *.key
 *.pfx
@@ -31,6 +32,7 @@ htmlcov/
 data/database/
 
 # Dados locais e confidenciais
+.audit/
 data/raw/
 data/processed/
 data/uploads/
@@ -68,3 +70,6 @@ dist/
 *.tmp
 *.temp
 ~$*
+tmp/
+outputs/
+output/

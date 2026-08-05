@@ -16,6 +16,7 @@ def test_root_endpoint() -> None:
         "version": "0.3.1",
         "status": "running",
         "documentation": "/docs",
+        "cockpit": "/cockpit",
     }
 
 

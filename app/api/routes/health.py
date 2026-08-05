@@ -1,3 +1,8 @@
+from pathlib import Path
+
+from alembic.config import Config
+from alembic.runtime.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from fastapi import (
     APIRouter,
     HTTPException,
@@ -11,6 +16,7 @@ from app.core.config import (
     APP_ENV,
     APP_NAME,
     APP_VERSION,
+    MODEL_EXECUTION_MODE,
 )
 from app.infrastructure.dependencies import DatabaseSession
 
@@ -19,6 +25,8 @@ router = APIRouter(
     prefix="/health",
     tags=["Sistema"],
 )
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+SECURE_ENVIRONMENTS = frozenset({"homologation", "staging", "production", "prod"})
 
 
 def verify_database_connection(
@@ -46,6 +54,7 @@ def base_health_response() -> dict[str, str]:
         "name": APP_NAME,
         "version": APP_VERSION,
         "environment": APP_ENV,
+        "execution_mode": MODEL_EXECUTION_MODE,
     }
 
 
@@ -56,8 +65,31 @@ def ready_response(
 
     response = base_health_response()
     response["database"] = "ok"
+    response["database_revision"] = verify_database_revision(session)
 
     return response
+
+
+def verify_database_revision(session: Session) -> str:
+    if APP_ENV.strip().lower() not in SECURE_ENVIRONMENTS:
+        return "not_enforced_in_local_or_test"
+    configuration = Config(str(PROJECT_ROOT / "alembic.ini"))
+    configuration.set_main_option("script_location", str(PROJECT_ROOT / "migrations"))
+    expected_heads = set(ScriptDirectory.from_config(configuration).get_heads())
+    current_heads = set(
+        MigrationContext.configure(session.connection()).get_current_heads()
+    )
+    if not current_heads or current_heads != expected_heads:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "code": "DATABASE_MIGRATION_NOT_CURRENT",
+                "message": "O banco não está no único head Alembic esperado.",
+                "expected_heads": sorted(expected_heads),
+                "current_heads": sorted(current_heads),
+            },
+        )
+    return next(iter(current_heads))
 
 
 @router.get(

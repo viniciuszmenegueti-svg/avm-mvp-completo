@@ -13,7 +13,10 @@ select = ["E", "F"]
 testpaths = ["tests"]
 addopts = [
     "-q",
+    "-p",
+    "no:cacheprovider",
     "--cov=app",
+    "--cov=engine",
     "--cov-report=term-missing",
     "--cov-fail-under=95",
 ]

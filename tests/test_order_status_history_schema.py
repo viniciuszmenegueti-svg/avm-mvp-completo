@@ -16,6 +16,10 @@ def valid_history_payload() -> dict:
         "previous_status": "RECEIVED",
         "new_status": "VALIDATING_INPUT",
         "changed_at": datetime.now(timezone.utc),
+        "changed_by": "caixa-integration",
+        "request_id": "TRACE-STATUS-001",
+        "reason_code": "CLIENT_STATUS_UPDATE",
+        "context": {"source": "api"},
     }
 
 
@@ -26,6 +30,10 @@ def test_accepts_valid_status_history() -> None:
     assert history.previous_status == OrderStatus.RECEIVED
     assert history.new_status == OrderStatus.VALIDATING_INPUT
     assert history.changed_at is not None
+    assert history.changed_by == "caixa-integration"
+    assert history.request_id == "TRACE-STATUS-001"
+    assert history.reason_code == "CLIENT_STATUS_UPDATE"
+    assert history.context == {"source": "api"}
 
 
 def test_rejects_invalid_previous_status() -> None:
