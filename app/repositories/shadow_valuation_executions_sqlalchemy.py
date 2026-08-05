@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
@@ -81,6 +83,98 @@ def list_paginated_shadow_valuation_executions_by_order(
         ShadowValuationExecutionModel.internal_order_id
         == internal_order_id,
     )
+
+    total_statement = select(
+        func.count(
+            ShadowValuationExecutionModel.execution_id
+        )
+    ).where(*filters)
+
+    total = int(
+        session.scalar(total_statement) or 0
+    )
+
+    statement: Select[
+        tuple[ShadowValuationExecutionModel]
+    ] = (
+        select(ShadowValuationExecutionModel)
+        .where(*filters)
+        .order_by(
+            ShadowValuationExecutionModel.executed_at.desc(),
+            ShadowValuationExecutionModel.execution_id.desc(),
+        )
+        .limit(limit)
+        .offset(offset)
+    )
+
+    executions = list(
+        session.scalars(statement).all()
+    )
+
+    return executions, total
+
+
+def search_shadow_valuation_executions(
+    session: Session,
+    *,
+    result_status: str | None = None,
+    internal_order_id: str | None = None,
+    requested_by: str | None = None,
+    model_version: str | None = None,
+    neighborhood: str | None = None,
+    executed_from: datetime | None = None,
+    executed_until: datetime | None = None,
+    limit: int,
+    offset: int,
+) -> tuple[
+    list[ShadowValuationExecutionModel],
+    int,
+]:
+    """Pesquisa globalmente as execu??es sombra audit?veis."""
+
+    filters = []
+
+    if result_status is not None:
+        filters.append(
+            ShadowValuationExecutionModel.result_status
+            == result_status
+        )
+
+    if internal_order_id is not None:
+        filters.append(
+            ShadowValuationExecutionModel.internal_order_id
+            == internal_order_id
+        )
+
+    if requested_by is not None:
+        filters.append(
+            ShadowValuationExecutionModel.requested_by
+            == requested_by
+        )
+
+    if model_version is not None:
+        filters.append(
+            ShadowValuationExecutionModel.model_version
+            == model_version
+        )
+
+    if neighborhood is not None:
+        filters.append(
+            ShadowValuationExecutionModel.neighborhood
+            == neighborhood
+        )
+
+    if executed_from is not None:
+        filters.append(
+            ShadowValuationExecutionModel.executed_at
+            >= executed_from
+        )
+
+    if executed_until is not None:
+        filters.append(
+            ShadowValuationExecutionModel.executed_at
+            <= executed_until
+        )
 
     total_statement = select(
         func.count(

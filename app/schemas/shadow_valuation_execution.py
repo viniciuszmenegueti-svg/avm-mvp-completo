@@ -56,3 +56,11 @@ class ShadowValuationExecutionListResponse(BaseModel):
     limit: int = Field(ge=1, le=100)
     offset: int = Field(ge=0)
     items: list[ShadowValuationExecutionResponse]
+
+
+class ShadowValuationExecutionSearchResponse(BaseModel):
+    total: int = Field(ge=0)
+    limit: int = Field(ge=1, le=100)
+    offset: int = Field(ge=0)
+    items: list[ShadowValuationExecutionResponse]
+
