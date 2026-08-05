@@ -6,6 +6,9 @@ from fastapi.staticfiles import StaticFiles
 from starlette.types import ExceptionHandler
 
 from app.api.routes.admin_diagnostics import router as admin_diagnostics_router
+from app.api.routes.admin_shadow_valuations import (
+    router as admin_shadow_valuations_router,
+)
 from app.api.routes.cities import router as cities_router
 from app.api.routes.cockpit import STATIC_DIRECTORY
 from app.api.routes.cockpit import router as cockpit_router
@@ -86,6 +89,7 @@ def root() -> dict[str, str]:
 
 app.include_router(health_router)
 app.include_router(admin_diagnostics_router)
+app.include_router(admin_shadow_valuations_router)
 app.include_router(geocoding_router)
 app.include_router(orders_router)
 app.include_router(property_assets_router)
