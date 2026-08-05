@@ -40,6 +40,9 @@ from app.domain.order_status_history_model import (
 )
 from app.domain.property_asset_model import PropertyAssetModel
 from app.domain.property_model import PropertyModel
+from app.domain.shadow_valuation_execution_model import (
+    ShadowValuationExecutionModel,
+)
 from app.domain.statistical_dataset_model import StatisticalDatasetModel
 from app.domain.statistical_model_version_model import StatisticalModelVersionModel
 from app.domain.valuation_model import ValuationModel
@@ -143,6 +146,7 @@ def prepare_test_database() -> Generator[None, None, None]:
         session.execute(delete(CnefeAddressModel))
         session.execute(delete(CnefeImportModel))
         session.execute(delete(CityValuationPriceHistoryModel))
+        session.execute(delete(ShadowValuationExecutionModel))
         session.execute(delete(ValuationModel))
         session.execute(delete(StatisticalModelVersionModel))
         session.execute(delete(StatisticalDatasetModel))
@@ -172,6 +176,7 @@ def prepare_test_database() -> Generator[None, None, None]:
         session.execute(delete(CnefeAddressModel))
         session.execute(delete(CnefeImportModel))
         session.execute(delete(CityValuationPriceHistoryModel))
+        session.execute(delete(ShadowValuationExecutionModel))
         session.execute(delete(ValuationModel))
         session.execute(delete(StatisticalModelVersionModel))
         session.execute(delete(StatisticalDatasetModel))

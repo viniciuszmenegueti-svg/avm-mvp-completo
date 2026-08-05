@@ -14,6 +14,9 @@ from app.domain.cnefe_address_model import CnefeAddressModel
 from app.domain.cnefe_import_model import CnefeImportModel
 from app.domain.geocoding_audit_model import GeocodingAuditModel
 from app.domain.order_model import OrderModel
+from app.domain.shadow_valuation_execution_model import (
+    ShadowValuationExecutionModel,
+)
 from app.domain.statistical_dataset_model import StatisticalDatasetModel
 from app.domain.statistical_model_version_model import StatisticalModelVersionModel
 from app.domain.order_refusal_model import OrderRefusalModel
