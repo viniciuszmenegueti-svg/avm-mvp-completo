@@ -8,11 +8,13 @@ from app.core.admin_auth import require_admin_api_key
 from app.infrastructure.dependencies import DatabaseSession
 from app.repositories.orders_sqlalchemy import get_order_by_internal_id
 from app.repositories.shadow_valuation_executions_sqlalchemy import (
+    summarize_shadow_valuation_executions,
     search_shadow_valuation_executions,
     get_shadow_valuation_execution,
     list_paginated_shadow_valuation_executions_by_order,
 )
 from app.schemas.shadow_valuation_execution import (
+    ShadowValuationExecutionSummaryResponse,
     ShadowValuationExecutionSearchResponse,
     ShadowValuationExecutionListResponse,
     ShadowValuationExecutionResponse,
@@ -157,6 +159,55 @@ def search_shadow_valuation_execution_history(
         limit=limit,
         offset=offset,
         items=items,
+    )
+
+
+
+
+
+@router.get(
+    "/shadow-valuation-executions/summary",
+    response_model=ShadowValuationExecutionSummaryResponse,
+    summary="Resume execu??es do modelo sombra",
+)
+def summarize_shadow_valuation_execution_history(
+    session: DatabaseSession,
+    actor: AdminActor,
+    executed_from: datetime | None = Query(
+        default=None,
+        description="Data inicial da execu??o, inclusive.",
+    ),
+    executed_until: datetime | None = Query(
+        default=None,
+        description="Data final da execu??o, inclusive.",
+    ),
+) -> ShadowValuationExecutionSummaryResponse:
+    """Retorna indicadores operacionais das execu??es sombra."""
+
+    if (
+        executed_from is not None
+        and executed_until is not None
+        and executed_from > executed_until
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={
+                "code": "INVALID_EXECUTION_PERIOD",
+                "message": (
+                    "A data inicial n?o pode ser posterior "
+                    "? data final."
+                ),
+            },
+        )
+
+    summary = summarize_shadow_valuation_executions(
+        session=session,
+        executed_from=executed_from,
+        executed_until=executed_until,
+    )
+
+    return ShadowValuationExecutionSummaryResponse(
+        **summary
     )
 
 
