@@ -38,6 +38,10 @@ from app.services.shadow_valuation_service import (
     ShadowValuationServiceError,
     calculate_shadow_valuation,
 )
+from app.services.shadow_valuation_execution_audit_service import (
+    record_not_applicable_shadow_execution,
+    record_successful_shadow_execution,
+)
 from app.services.report_service import build_valuation_csv, build_valuation_pdf
 from engine.exceptions import ValuationCalculationError
 from engine.registry import ModelVersionNotActiveError
@@ -338,6 +342,8 @@ def export_order_valuation_pdf(
 def preview_order_shadow_valuation(
     internal_order_id: UUID,
     session: DatabaseSession,
+    request: Request,
+    client_actor: ClientActor,
 ) -> ShadowValuationPreviewResponse:
     """Executa o modelo sombra sem persistir ou alterar a avaliação oficial."""
 
@@ -363,6 +369,15 @@ def preview_order_shadow_valuation(
             order.property
         )
     except ShadowValuationServiceError as error:
+        record_not_applicable_shadow_execution(
+            session=session,
+            internal_order_id=order_id,
+            property_data=order.property,
+            requested_by=client_actor,
+            request_id=str(request.state.request_id),
+            error_message=str(error),
+        )
+
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={
@@ -371,6 +386,15 @@ def preview_order_shadow_valuation(
                 "internal_order_id": order_id,
             },
         ) from error
+
+    record_successful_shadow_execution(
+        session=session,
+        internal_order_id=order_id,
+        property_data=order.property,
+        result=result,
+        requested_by=client_actor,
+        request_id=str(request.state.request_id),
+    )
 
     prediction = result.prediction
 
